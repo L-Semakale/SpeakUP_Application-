@@ -1,25 +1,5 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const SpeakUpApp());
-}
-
-class SpeakUpApp extends StatelessWidget {
-  const SpeakUpApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SpeakUp',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        useMaterial3: true,
-      ),
-      home: const ProfileSetupScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
+import 'home_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({Key? key}) : super(key: key);
@@ -441,20 +421,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Print selected data to console for testing
-                  print('Display Name: ${_displayNameController.text}');
-                  print('Selected Avatar: $_selectedAvatar');
-                  print('Age Range: $_selectedAgeRange');
-                  print('Selected Goals: $_selectedGoals');
-                  print('Selected Support: $_selectedSupport');
-                  print('Contact Name: ${_contactNameController.text}');
-                  print('Phone: ${_phoneController.text}');
-                  
-                  // Show success message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Profile setup completed! Check console for data.'),
-                      backgroundColor: Colors.green,
+                  // Save profile data and navigate to home
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HomeScreen(
+                        userName: _displayNameController.text.isEmpty
+                            ? 'User'
+                            : _displayNameController.text,
+                      ),
                     ),
                   );
                 },
