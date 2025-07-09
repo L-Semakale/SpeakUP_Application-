@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'screens/home_page.dart';
+import '/screens/landing_screen.dart';
+import 'screens/welcome_screen.dart';
 
 void main() {
   runApp(const SpeakUpApp());
 }
+
 class SpeakUpApp extends StatelessWidget {
   const SpeakUpApp({super.key});
 
@@ -11,8 +13,13 @@ class SpeakUpApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SpeakUp',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomePage(),
+      debugShowCheckedModeBanner: false,
+      initialRoute: '/landing',
+      routes: {
+        '/landing': (context) => const LandingScreen(),
+        '/welcome': (context) => const WelcomeScreen(),
+        // Add more routes here as needed
+      },
     );
   }
 }

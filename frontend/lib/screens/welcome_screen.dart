@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'your_support.dart';
+import 'profile_setup.dart';
+import 'login_screen.dart';
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class WelcomeScreen extends StatelessWidget {
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +39,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const YourSupportScreen(),
+                        builder: (context) => const ProfileSetupScreen(),
                       ),
                     );
                   },
@@ -64,12 +65,10 @@ class HomePage extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 20),
-
                 const Text(
                   'or',
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
-
                 const SizedBox(height: 20),
 
                 Container(
@@ -97,7 +96,14 @@ class HomePage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(28),
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                        );
+                      },
                       child: const Text(
                         'Sign In',
                         style: TextStyle(color: Colors.blue, fontSize: 18),

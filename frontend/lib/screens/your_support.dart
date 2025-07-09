@@ -47,9 +47,7 @@ class YourSupportScreen extends StatelessWidget {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(
-                            Icons.favorite_border,
-                          ),
+                          icon: const Icon(Icons.favorite_border),
                           onPressed: () {},
                         ),
                         const Text("24"),
