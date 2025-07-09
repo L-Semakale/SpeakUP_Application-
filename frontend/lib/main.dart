@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart';
-import 'home_screen.dart';
-
-// import 'profile_screen.dart';
-// import 'settings_screen.dart';
-// import 'create_post_screen.dart';
-// etc.
+import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() {
   runApp(const SpeakUpApp());
@@ -26,12 +21,7 @@ class SpeakUpApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginScreen(),
-        '/home': (context) => const HomeScreen(),
-
-        // Add other team screens here:
-        // '/profile': (context) => const ProfileScreen(),
-        // '/settings': (context) => const SettingsScreen(),
-        // '/create_post': (context) => const CreatePostScreen(),
+        '/home': (context) => const SplashScreen(),
       },
     );
   }

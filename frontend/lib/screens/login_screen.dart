@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -33,11 +32,10 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
 
     _animationController.forward();
   }
@@ -52,8 +50,9 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-        .hasMatch(email);
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(email);
   }
 
   String? _validateEmail(String? value) {
@@ -111,15 +110,18 @@ class _LoginScreenState extends State<LoginScreen>
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text(_isSignUpMode
-                    ? "Account created successfully!"
-                    : "Welcome back!"),
+                Text(
+                  _isSignUpMode
+                      ? "Account created successfully!"
+                      : "Welcome back!",
+                ),
               ],
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -151,8 +153,9 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -179,7 +182,8 @@ class _LoginScreenState extends State<LoginScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-                "Enter your email address to receive reset instructions:"),
+              "Enter your email address to receive reset instructions:",
+            ),
             const SizedBox(height: 16),
             TextField(
               decoration: InputDecoration(
@@ -201,8 +205,9 @@ class _LoginScreenState extends State<LoginScreen>
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content:
-                  Text("Password reset instructions sent to your email"),
+                  content: Text(
+                    "Password reset instructions sent to your email",
+                  ),
                   backgroundColor: Colors.green,
                 ),
               );
@@ -283,11 +288,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ],
           ),
-          child: const Icon(
-            Icons.psychology,
-            size: 40,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.psychology, size: 40, color: Colors.white),
         ),
         const SizedBox(height: 20),
         Text(
@@ -304,10 +305,7 @@ class _LoginScreenState extends State<LoginScreen>
               ? "Create your account and start your mental health journey"
               : "Sign in to continue your mental health journey",
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 16,
-            color: Color(0xFF64748B),
-          ),
+          style: const TextStyle(fontSize: 16, color: Color(0xFF64748B)),
         ),
       ],
     );
@@ -410,13 +408,13 @@ class _LoginScreenState extends State<LoginScreen>
         prefixIcon: Icon(icon, color: Colors.indigo),
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(
-            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-            color: Colors.grey,
-          ),
-          onPressed: () =>
-              setState(() => _isPasswordVisible = !_isPasswordVisible),
-        )
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.grey,
+                ),
+                onPressed: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
+              )
             : null,
         filled: true,
         fillColor: Colors.grey.shade50,
@@ -453,20 +451,20 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         child: _isLoading
             ? const SizedBox(
-          height: 24,
-          width: 24,
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            strokeWidth: 2,
-          ),
-        )
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2,
+                ),
+              )
             : Text(
-          _isSignUpMode ? "Create Account" : "Sign In",
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+                _isSignUpMode ? "Create Account" : "Sign In",
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
       ),
     );
   }
@@ -528,9 +526,7 @@ class _LoginScreenState extends State<LoginScreen>
       label: Text(label),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: BorderSide(color: Colors.grey.shade300),
       ),
     );
@@ -572,11 +568,7 @@ class _LoginScreenState extends State<LoginScreen>
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.favorite,
-            color: Colors.indigo,
-            size: 24,
-          ),
+          const Icon(Icons.favorite, color: Colors.indigo, size: 24),
           const SizedBox(height: 8),
           Text(
             _isSignUpMode
