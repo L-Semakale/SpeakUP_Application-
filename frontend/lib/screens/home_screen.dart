@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'create_post.dart';
-import 'professional_support.dart';
 import 'resources_screen.dart';
 import 'app_setting.dart';
+import 'your_support.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -71,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
           } else if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const SupportScreen()),
+              MaterialPageRoute(builder: (context) => const YourSupportScreen()),
             );
           } else if (index == 3) {
             Navigator.push(

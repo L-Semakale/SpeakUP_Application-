@@ -18,7 +18,6 @@ class SpeakUpApp extends StatelessWidget {
       routes: {
         '/landing': (context) => const LandingScreen(),
         '/welcome': (context) => const WelcomeScreen(),
-        // Add more routes here as needed
       },
     );
   }
