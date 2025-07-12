@@ -9,7 +9,7 @@ import 'profile_setup_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
-  const HomeScreen({Key? key, required this.userName}) : super(key: key);
+  const HomeScreen({super.key, required this.userName});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();

@@ -5,7 +5,7 @@ void main() {
 }
 
 class SpeakUpApp extends StatelessWidget {
-  const SpeakUpApp({Key? key}) : super(key: key);
+  const SpeakUpApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +22,7 @@ class SpeakUpApp extends StatelessWidget {
 }
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({Key? key}) : super(key: key);
+  const ProfileSetupScreen({super.key});
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
