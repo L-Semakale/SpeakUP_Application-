@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
-import 'create_post_page.dart'; // <-- Import the file
+import 'create_post_page.dart';
+import 'resources_page.dart'; // <-- Add this line
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Create Post App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: CreatePostPage(), // <-- Set it as the home screen
+      title: 'Mental Health App',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.indigo,
+      ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const CreatePostPage(), // default home
+        '/resources': (context) => const ResourcesPage(),
+      },
     );
   }
 }

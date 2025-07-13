@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
 class CreatePostPage extends StatefulWidget {
+  const CreatePostPage({super.key});
+
   @override
   _CreatePostPageState createState() => _CreatePostPageState();
 }
