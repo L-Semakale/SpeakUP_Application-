@@ -8,407 +8,743 @@ class ProfileSetupScreen extends StatefulWidget {
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileSetupScreenState extends State<ProfileSetupScreen>
+    with TickerProviderStateMixin {
   final _displayNameController = TextEditingController();
   final _contactNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   int _selectedAvatar = 0;
   String _selectedAgeRange = '';
   final List<String> _selectedGoals = [];
   final List<String> _selectedSupport = [];
 
-  final List<String> _goals = [
-    'Manage Anxiety',
-    'Find Community',
-    'Improve Sleep',
-    'Overcome Depression',
-    'Professional Help',
-    'Stress Management',
+  final List<Map<String, dynamic>> _avatarOptions = [
+    {'emoji': '🌸', 'color': Color(0xFFE91E63)},
+    {'emoji': '🌟', 'color': Color(0xFF667EEA)},
+    {'emoji': '🧘', 'color': Color(0xFF4CAF50)},
+    {'emoji': '💜', 'color': Color(0xFF9C27B0)},
+    {'emoji': '🌙', 'color': Color(0xFF3F51B5)},
+    {'emoji': '🌱', 'color': Color(0xFF8BC34A)},
   ];
 
-  final List<Map<String, String>> _supportTypes = [
+  final List<Map<String, dynamic>> _goals = [
+    {'title': 'Manage Anxiety', 'icon': Icons.psychology, 'color': Color(0xFF667EEA)},
+    {'title': 'Find Community', 'icon': Icons.group, 'color': Color(0xFF4CAF50)},
+    {'title': 'Improve Sleep', 'icon': Icons.bedtime, 'color': Color(0xFF9C27B0)},
+    {'title': 'Overcome Depression', 'icon': Icons.favorite, 'color': Color(0xFFE91E63)},
+    {'title': 'Professional Help', 'icon': Icons.medical_services, 'color': Color(0xFFFF9800)},
+    {'title': 'Stress Management', 'icon': Icons.self_improvement, 'color': Color(0xFF00BCD4)},
+  ];
+
+  final List<Map<String, dynamic>> _supportTypes = [
     {
       'title': 'Peer Support',
       'subtitle': 'Connect with others who understand your journey',
+      'icon': Icons.group,
+      'color': Color(0xFF667EEA),
     },
     {
       'title': 'Professional Guidance',
       'subtitle': 'Access to licensed therapists and counselors',
+      'icon': Icons.psychology,
+      'color': Color(0xFF4CAF50),
     },
     {
       'title': 'Educational Resources',
       'subtitle': 'Articles, videos, and tools for self-improvement',
+      'icon': Icons.school,
+      'color': Color(0xFF9C27B0),
     },
     {
       'title': 'Crisis Support',
       'subtitle': '24/7 access to emergency mental health resources',
+      'icon': Icons.emergency,
+      'color': Color(0xFFE53E3E),
     },
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart));
+    
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _displayNameController.dispose();
+    _contactNameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile Setup'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            const Text(
-              'Let\'s get to know you',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Help us personalize your SpeakUp Experience\nAll information is kept private and secure.',
-              style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.4),
-            ),
-            const SizedBox(height: 32),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF667EEA),
+              Color(0xFF764BA2),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return SlideTransition(
+                position: _slideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: child,
+                ),
+              );
+            },
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header Section
+                    _buildHeader(),
+                    const SizedBox(height: 32),
 
-            // Display Name Section
-            const Text(
-              'Display name(optional)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'how would you like to be addressed?',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _displayNameController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Avatar Selection
-            const Text(
-              'Choose Your Avatar',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: List.generate(3, (index) {
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: index < 2 ? 16 : 0),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _selectedAvatar = index),
-                      child: Container(
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _selectedAvatar == index
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey.shade300,
-                            width: _selectedAvatar == index ? 3 : 1,
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.person,
-                            size: 40,
-                            color: _selectedAvatar == index
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 32),
-
-            // Age Range Selection
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  hint: const Text('select your age range'),
-                  value: _selectedAgeRange.isEmpty ? null : _selectedAgeRange,
-                  items: ['18-25', '26-35', '36-45', '46-55', '56-65', '65+']
-                      .map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      })
-                      .toList(),
-                  onChanged: (String? newValue) {
-                    setState(() => _selectedAgeRange = newValue ?? '');
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Goals Section
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'What are your goals?',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Select what you\'d like to focus on. You can change these anytime.',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _goals.map((goal) {
-                final isSelected = _selectedGoals.contains(goal);
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (isSelected) {
-                        _selectedGoals.remove(goal);
-                      } else {
-                        _selectedGoals.add(goal);
-                      }
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Theme.of(context).primaryColor.withOpacity(0.1)
-                          : Colors.transparent,
-                      border: Border.all(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.grey.shade300,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      goal,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor
-                            : Colors.black87,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
-
-            // Support Types Section
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.orange,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'How can we support you?',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Choose the types of support you\'re most interested in receiving.',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Column(
-              children: _supportTypes.map((support) {
-                final isSelected = _selectedSupport.contains(support['title']);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        if (isSelected) {
-                          _selectedSupport.remove(support['title']);
-                        } else {
-                          _selectedSupport.add(support['title']!);
-                        }
-                      });
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                    // Main Content Card
+                    Container(
+                      padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? Theme.of(context).primaryColor.withOpacity(0.05)
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: isSelected
-                              ? Theme.of(context).primaryColor
-                              : Colors.grey.shade300,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            support['title']!,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: isSelected
-                                  ? Theme.of(context).primaryColor
-                                  : Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            support['subtitle']!,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
-                          ),
+                          // Display Name Section
+                          _buildDisplayNameSection(),
+                          const SizedBox(height: 32),
+
+                          // Avatar Selection
+                          _buildAvatarSection(),
+                          const SizedBox(height: 32),
+
+                          // Age Range Selection
+                          _buildAgeRangeSection(),
+                          const SizedBox(height: 32),
+
+                          // Goals Section
+                          _buildGoalsSection(),
+                          const SizedBox(height: 32),
+
+                          // Support Types Section
+                          _buildSupportSection(),
+                          const SizedBox(height: 32),
+
+                          // Emergency Contacts Section
+                          _buildEmergencyContactsSection(),
                         ],
                       ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
 
-            // Emergency Contacts Section
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Emergency Contacts',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Add trusted contacts we can reach during a crisis (optional but recommended).',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _contactNameController,
-              decoration: InputDecoration(
-                hintText: 'Contact Name',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                    const SizedBox(height: 24),
+
+                    // Continue Button
+                    _buildContinueButton(),
+                    const SizedBox(height: 16),
+
+                    // Skip Option
+                    _buildSkipOption(),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                hintText: 'Phone Number',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.person_add,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Step 1 of 1',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Let\'s personalize your\nSpeakUp journey! 🌟',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+          ),
+          child: const Text(
+            '🔒 All information is private and secure',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-            // Continue Button
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HomeScreen(
-                      userName: _displayNameController.text.isNotEmpty
-                          ? _displayNameController.text
-                          : 'Anonymous',
+  Widget _buildDisplayNameSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'What should we call you?',
+          'Choose a display name (optional)',
+          Icons.badge,
+          Color(0xFF667EEA),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _displayNameController,
+          decoration: InputDecoration(
+            hintText: 'Enter your preferred name',
+            prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF667EEA)),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAvatarSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Choose your avatar',
+          'Pick one that represents you',
+          Icons.face,
+          Color(0xFF4CAF50),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1,
+          ),
+          itemCount: _avatarOptions.length,
+          itemBuilder: (context, index) {
+            final avatar = _avatarOptions[index];
+            final isSelected = _selectedAvatar == index;
+            
+            return GestureDetector(
+              onTap: () => setState(() => _selectedAvatar = index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: isSelected 
+                      ? avatar['color'].withOpacity(0.1)
+                      : const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected 
+                        ? avatar['color']
+                        : Colors.grey.shade300,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  boxShadow: isSelected ? [
+                    BoxShadow(
+                      color: avatar['color'].withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
+                  ] : null,
+                ),
+                child: Center(
+                  child: Text(
+                    avatar['emoji'],
+                    style: const TextStyle(fontSize: 32),
                   ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Continue', style: TextStyle(fontSize: 16)),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgeRangeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Age range',
+          'Help us personalize your experience',
+          Icons.calendar_today,
+          Color(0xFF9C27B0),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              hint: const Text(
+                'Select your age range',
+                style: TextStyle(color: Color(0xFF636E72)),
+              ),
+              value: _selectedAgeRange.isEmpty ? null : _selectedAgeRange,
+              icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF667EEA)),
+              items: ['18-25', '26-35', '36-45', '46-55', '56-65', '65+']
+                  .map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(
+                        value,
+                        style: const TextStyle(color: Color(0xFF2D3436)),
+                      ),
+                    );
+                  })
+                  .toList(),
+              onChanged: (String? newValue) {
+                setState(() => _selectedAgeRange = newValue ?? '');
+              },
             ),
-            const SizedBox(height: 24),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGoalsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'What are your goals?',
+          'Select what you\'d like to focus on',
+          Icons.flag,
+          Color(0xFFE91E63),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _goals.map((goal) {
+            final isSelected = _selectedGoals.contains(goal['title']);
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (isSelected) {
+                    _selectedGoals.remove(goal['title']);
+                  } else {
+                    _selectedGoals.add(goal['title']);
+                  }
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? goal['color'].withOpacity(0.1)
+                      : const Color(0xFFF8F9FA),
+                  border: Border.all(
+                    color: isSelected
+                        ? goal['color']
+                        : Colors.grey.shade300,
+                  ),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      goal['icon'],
+                      size: 16,
+                      color: isSelected ? goal['color'] : const Color(0xFF636E72),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      goal['title'],
+                      style: TextStyle(
+                        color: isSelected ? goal['color'] : const Color(0xFF2D3436),
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSupportSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'How can we support you?',
+          'Choose the types of support you need',
+          Icons.favorite,
+          Color(0xFFFF9800),
+        ),
+        const SizedBox(height: 16),
+        Column(
+          children: _supportTypes.map((support) {
+            final isSelected = _selectedSupport.contains(support['title']);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedSupport.remove(support['title']);
+                    } else {
+                      _selectedSupport.add(support['title']);
+                    }
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? support['color'].withOpacity(0.1)
+                        : const Color(0xFFF8F9FA),
+                    border: Border.all(
+                      color: isSelected
+                          ? support['color']
+                          : Colors.grey.shade300,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? support['color'].withOpacity(0.2)
+                              : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          support['icon'],
+                          color: isSelected ? support['color'] : const Color(0xFF636E72),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              support['title'],
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? support['color']
+                                    : const Color(0xFF2D3436),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              support['subtitle'],
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF636E72),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isSelected)
+                        Icon(
+                          Icons.check_circle,
+                          color: support['color'],
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmergencyContactsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Emergency contacts',
+          'Optional but recommended for safety',
+          Icons.emergency,
+          Color(0xFFE53E3E),
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _contactNameController,
+          decoration: InputDecoration(
+            hintText: 'Trusted contact name',
+            prefixIcon: const Icon(Icons.person_outline, color: Color(0xFFE53E3E)),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          decoration: InputDecoration(
+            hintText: 'Phone number',
+            prefixIcon: const Icon(Icons.phone_outlined, color: Color(0xFFE53E3E)),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String subtitle, IconData icon, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D3436),
+                ),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF636E72),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContinueButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF667EEA).withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                userName: _displayNameController.text.isNotEmpty
+                    ? _displayNameController.text
+                    : 'Anonymous',
+              ),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Complete Setup',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward,
+              color: Colors.white,
+              size: 20,
+            ),
           ],
         ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _displayNameController.dispose();
-    _contactNameController.dispose();
-    _phoneController.dispose();
-    super.dispose();
+  Widget _buildSkipOption() {
+    return Center(
+      child: TextButton(
+        onPressed: () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HomeScreen(userName: 'Anonymous'),
+            ),
+          );
+        },
+        child: const Text(
+          'Skip for now',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
   }
 }

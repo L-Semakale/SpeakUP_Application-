@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,31 +19,47 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _rememberMe = false;
   bool _isSignUpMode = false;
+  
   late AnimationController _animationController;
+  late AnimationController _floatingController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _floatingAnimation;
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
+    
+    _floatingController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+    
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+    
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart),
         );
+    
+    _floatingAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut),
+    );
 
     _animationController.forward();
+    _floatingController.repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _floatingController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
@@ -112,17 +129,18 @@ class _LoginScreenState extends State<LoginScreen>
                 const SizedBox(width: 8),
                 Text(
                   _isSignUpMode
-                      ? "Account created successfully!"
-                      : "Welcome back!",
+                      ? "Welcome to SpeakUp! 🎉"
+                      : "Welcome back! 😊",
                 ),
               ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: const Color(0xFF4CAF50),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
             duration: const Duration(seconds: 2),
+            margin: const EdgeInsets.all(16),
           ),
         );
 
@@ -151,11 +169,12 @@ class _LoginScreenState extends State<LoginScreen>
                 Text("Authentication failed. Please try again."),
               ],
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFFE53E3E),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -174,22 +193,51 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Reset Password"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF667EEA).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.lock_reset,
+                color: Color(0xFF667EEA),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text("Reset Password"),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              "Enter your email address to receive reset instructions:",
+              "Don't worry! Enter your email address and we'll send you instructions to reset your password.",
+              style: TextStyle(height: 1.5),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             TextField(
+              controller: emailController,
               decoration: InputDecoration(
-                hintText: 'Email',
+                hintText: 'Enter your email',
+                prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF667EEA)),
+                filled: true,
+                fillColor: const Color(0xFFF8F9FA),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
                 ),
               ),
             ),
@@ -198,21 +246,32 @@ class _LoginScreenState extends State<LoginScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: const Text("Cancel", style: TextStyle(color: Color(0xFF636E72))),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    "Password reset instructions sent to your email",
+                SnackBar(
+                  content: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text("Reset link sent! Check your email 📧"),
+                    ],
                   ),
-                  backgroundColor: Colors.green,
+                  backgroundColor: const Color(0xFF4CAF50),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  margin: const EdgeInsets.all(16),
                 ),
               );
             },
-            child: const Text("Send Reset Link"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF667EEA),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text("Send Reset Link", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -222,49 +281,110 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 40),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF667EEA),
+              Color(0xFF764BA2),
+            ],
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Floating background elements
+            ...List.generate(5, (index) => _buildFloatingElement(index)),
+            
+            // Main content
+            SafeArea(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 40),
 
-                    // Logo/Brand Section
-                    _buildBrandSection(),
-                    const SizedBox(height: 40),
+                          // Logo/Brand Section
+                          _buildBrandSection(),
+                          const SizedBox(height: 40),
 
-                    // Auth Form
-                    _buildAuthForm(),
-                    const SizedBox(height: 24),
+                          // Auth Form
+                          _buildAuthForm(),
+                          const SizedBox(height: 24),
 
-                    // Auth Button
-                    _buildAuthButton(),
-                    const SizedBox(height: 16),
+                          // Auth Button
+                          _buildAuthButton(),
+                          const SizedBox(height: 20),
 
-                    // Additional Options
-                    _buildAdditionalOptions(),
-                    const SizedBox(height: 24),
+                          // Additional Options
+                          _buildAdditionalOptions(),
+                          const SizedBox(height: 24),
 
-                    // Toggle Auth Mode
-                    _buildToggleAuthMode(),
-                    const SizedBox(height: 20),
+                          // Toggle Auth Mode
+                          _buildToggleAuthMode(),
+                          const SizedBox(height: 20),
 
-                    // Motivational Message
-                    _buildMotivationalMessage(),
-                  ],
+                          // Motivational Message
+                          _buildMotivationalMessage(),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingElement(int index) {
+    final positions = [
+      const Offset(0.1, 0.15),
+      const Offset(0.85, 0.25),
+      const Offset(0.15, 0.7),
+      const Offset(0.8, 0.8),
+      const Offset(0.5, 0.1),
+    ];
+    
+    final sizes = [60.0, 80.0, 50.0, 70.0, 40.0];
+    final delays = [0.0, 0.3, 0.6, 0.9, 1.2];
+
+    return AnimatedBuilder(
+      animation: _floatingAnimation,
+      builder: (context, child) {
+        final progress = (_floatingAnimation.value + delays[index]) % 1.0;
+        final offset = Offset(0, sin(progress * 2 * pi) * 10);
+        
+        return Positioned(
+          left: MediaQuery.of(context).size.width * positions[index].dx,
+          top: MediaQuery.of(context).size.height * positions[index].dy,
+          child: Transform.translate(
+            offset: offset,
+            child: Container(
+              width: sizes[index],
+              height: sizes[index],
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -272,40 +392,60 @@ class _LoginScreenState extends State<LoginScreen>
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.indigo.shade400, Colors.purple.shade400],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.indigo.withOpacity(0.3),
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+              BoxShadow(
+                color: const Color(0xFF667EEA).withOpacity(0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(Icons.psychology, size: 40, color: Colors.white),
+          child: const Icon(
+            Icons.psychology,
+            size: 48,
+            color: Color(0xFF667EEA),
+          ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
+        
         Text(
-          _isSignUpMode ? "Join SpeakUp" : "Welcome Back!",
+          _isSignUpMode ? "Join Our Community" : "Welcome Back!",
           style: const TextStyle(
-            fontSize: 28,
+            fontSize: 32,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1E293B),
+            color: Colors.white,
+            letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          _isSignUpMode
-              ? "Create your account and start your mental health journey"
-              : "Sign in to continue your mental health journey",
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 16, color: Color(0xFF64748B)),
+        
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+          ),
+          child: Text(
+            _isSignUpMode
+                ? "Start your mental wellness journey with us"
+                : "Continue your path to mental wellness",
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ],
     );
@@ -313,15 +453,15 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildAuthForm() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
       ),
@@ -336,7 +476,7 @@ class _LoginScreenState extends State<LoginScreen>
               icon: Icons.person_outline,
               validator: _validateName,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
           ],
 
           // Email Field
@@ -348,7 +488,7 @@ class _LoginScreenState extends State<LoginScreen>
             keyboardType: TextInputType.emailAddress,
             validator: _validateEmail,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           // Password Field
           _buildTextField(
@@ -362,22 +502,32 @@ class _LoginScreenState extends State<LoginScreen>
 
           // Remember Me & Forgot Password
           if (!_isSignUpMode) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Row(
               children: [
-                Checkbox(
-                  value: _rememberMe,
-                  onChanged: (value) =>
-                      setState(() => _rememberMe = value ?? false),
-                  activeColor: Colors.indigo,
+                Transform.scale(
+                  scale: 0.8,
+                  child: Checkbox(
+                    value: _rememberMe,
+                    onChanged: (value) =>
+                        setState(() => _rememberMe = value ?? false),
+                    activeColor: const Color(0xFF667EEA),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  ),
                 ),
-                const Text("Remember me"),
+                const Text(
+                  "Remember me",
+                  style: TextStyle(color: Color(0xFF64748B)),
+                ),
                 const Spacer(),
                 TextButton(
                   onPressed: _showForgotPasswordDialog,
                   child: const Text(
                     "Forgot Password?",
-                    style: TextStyle(color: Colors.indigo),
+                    style: TextStyle(
+                      color: Color(0xFF667EEA),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -402,52 +552,70 @@ class _LoginScreenState extends State<LoginScreen>
       keyboardType: keyboardType,
       obscureText: isPassword && !_isPasswordVisible,
       validator: validator,
+      style: const TextStyle(fontSize: 16),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: Colors.indigo),
+        prefixIcon: Icon(icon, color: const Color(0xFF667EEA), size: 22),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
                   _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.grey,
+                  color: const Color(0xFF94A3B8),
+                  size: 22,
                 ),
                 onPressed: () =>
                     setState(() => _isPasswordVisible = !_isPasswordVisible),
               )
             : null,
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: const Color(0xFFF8FAFC),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.indigo, width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2),
         ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
     );
   }
 
   Widget _buildAuthButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
       height: 56,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF667EEA).withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleAuth,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.indigo,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 8,
-          shadowColor: Colors.indigo.withOpacity(0.3),
         ),
         child: _isLoading
             ? const SizedBox(
@@ -458,12 +626,24 @@ class _LoginScreenState extends State<LoginScreen>
                   strokeWidth: 2,
                 ),
               )
-            : Text(
-                _isSignUpMode ? "Create Account" : "Sign In",
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _isSignUpMode ? "Create Account" : "Sign In",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
               ),
       ),
     );
@@ -472,42 +652,72 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildAdditionalOptions() {
     return Column(
       children: [
-        const Row(
+        Row(
           children: [
-            Expanded(child: Divider()),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                "or continue with",
-                style: TextStyle(color: Colors.grey),
+            Expanded(
+              child: Container(
+                height: 1,
+                color: Colors.white.withOpacity(0.3),
               ),
             ),
-            Expanded(child: Divider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                "or continue with",
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                height: 1,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
         // Social Login Options
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildSocialButton(
-              icon: Icons.g_mobiledata,
-              label: "Google",
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Google sign-in coming soon!")),
-                );
-              },
+            Expanded(
+              child: _buildSocialButton(
+                icon: Icons.g_mobiledata,
+                label: "Google",
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text("Google sign-in coming soon! 🚀"),
+                      backgroundColor: const Color(0xFF667EEA),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.all(16),
+                    ),
+                  );
+                },
+              ),
             ),
-            _buildSocialButton(
-              icon: Icons.apple,
-              label: "Apple",
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Apple sign-in coming soon!")),
-                );
-              },
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSocialButton(
+                icon: Icons.apple,
+                label: "Apple",
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text("Apple sign-in coming soon! 🍎"),
+                      backgroundColor: const Color(0xFF667EEA),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.all(16),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -520,37 +730,57 @@ class _LoginScreenState extends State<LoginScreen>
     required String label,
     required VoidCallback onPressed,
   }) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 20),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        side: BorderSide(color: Colors.grey.shade300),
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 20, color: Colors.white),
+        label: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       ),
     );
   }
 
   Widget _buildToggleAuthMode() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          _isSignUpMode ? "Already have an account?" : "Don't have an account?",
-          style: const TextStyle(color: Colors.grey),
-        ),
-        TextButton(
-          onPressed: _toggleAuthMode,
-          child: Text(
-            _isSignUpMode ? "Sign In" : "Sign Up",
-            style: const TextStyle(
-              color: Colors.indigo,
-              fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _isSignUpMode ? "Already have an account?" : "Don't have an account?",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          TextButton(
+            onPressed: _toggleAuthMode,
+            child: Text(
+              _isSignUpMode ? "Sign In" : "Sign Up",
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -558,27 +788,24 @@ class _LoginScreenState extends State<LoginScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.purple.shade50, Colors.indigo.shade50],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.indigo.shade100),
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: Column(
         children: [
-          const Icon(Icons.favorite, color: Colors.indigo, size: 24),
-          const SizedBox(height: 8),
+          const Icon(Icons.favorite, color: Colors.white, size: 24),
+          const SizedBox(height: 12),
           Text(
             _isSignUpMode
-                ? "🚀 Ready to prioritize your mental health? Your journey starts here."
-                : "🌟 Your mental health journey continues. We're here to support you.",
+                ? "🌟 Ready to prioritize your mental health?\nYour journey to wellness starts here."
+                : "💜 Welcome back to your mental wellness journey.\nWe're here to support you every step of the way.",
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.indigo.shade700,
+            style: const TextStyle(
+              color: Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.w500,
+              height: 1.5,
             ),
           ),
         ],
