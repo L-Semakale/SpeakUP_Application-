@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import  '../services/auth_service.dart';
 import 'dart:math';
 
 class LoginScreen extends StatefulWidget {
@@ -19,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _rememberMe = false;
   bool _isSignUpMode = false;
-  
+
   late AnimationController _animationController;
   late AnimationController _floatingController;
   late Animation<double> _fadeAnimation;
@@ -29,25 +31,29 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void initState() {
     super.initState();
+    _setupAnimations();
+  }
+
+  void _setupAnimations() {
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _floatingController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
           CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart),
         );
-    
+
     _floatingAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut),
     );
@@ -66,10 +72,9 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  // Validation methods
   bool _isValidEmail(String email) {
-    return RegExp(
-      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-    ).hasMatch(email);
+    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
   }
 
   String? _validateEmail(String? value) {
@@ -108,81 +113,149 @@ class _LoginScreenState extends State<LoginScreen>
     return null;
   }
 
-  Future<void> _handleAuth() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  // Authentication methods using AuthService
+  Future<void> _handleEmailAuth() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
+      AuthResult result;
 
-      if (mounted) {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  _isSignUpMode
-                      ? "Welcome to SpeakUp! 🎉"
-                      : "Welcome back! 😊",
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF4CAF50),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            duration: const Duration(seconds: 2),
-            margin: const EdgeInsets.all(16),
-          ),
+      if (_isSignUpMode) {
+        result = await AuthService.signUpWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+          displayName: _nameController.text,
         );
+      } else {
+        result = await AuthService.signInWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
 
-        // Navigate to home with user's name
-        String userName = _isSignUpMode
-            ? _nameController.text
-            : _emailController.text.split('@')[0];
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/home',
-              arguments: userName,
-            );
-          }
-        });
+      if (result.isSuccess && mounted) {
+        _showSuccessSnackBar(
+            _isSignUpMode ? "Welcome to SpeakUp! 🎉" : "Welcome back! 😊"
+        );
+        _navigateToHome(result.user!);
+      } else if (mounted) {
+        _showErrorSnackBar(result.errorMessage!);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                Text("Authentication failed. Please try again."),
-              ],
-            ),
-            backgroundColor: const Color(0xFFE53E3E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        _showErrorSnackBar("An unexpected error occurred");
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _handleAnonymousAuth() async {
+    setState(() => _isLoading = true);
+
+    try {
+      AuthResult result = await AuthService.signInAnonymously();
+
+      if (result.isSuccess && mounted) {
+        _showSuccessSnackBar("Signed in anonymously! 🕶️");
+        _navigateToHome(result.user!);
+      } else if (mounted) {
+        _showErrorSnackBar(result.errorMessage!);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar("Anonymous sign-in failed");
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final emailController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => _buildForgotPasswordDialog(emailController),
+    );
+
+    if (result == true && emailController.text.isNotEmpty) {
+      AuthResult resetResult = await AuthService.sendPasswordResetEmail(
+        emailController.text,
+      );
+
+      if (mounted) {
+        if (resetResult.isSuccess) {
+          _showSuccessSnackBar("Reset link sent! Check your email 📧");
+        } else {
+          _showErrorSnackBar(resetResult.errorMessage!);
+        }
+      }
+    }
+  }
+
+  // UI Helper methods
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFFE53E3E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  void _navigateToHome(User user) {
+    String userName = user.displayName ??
+        (_isSignUpMode ? _nameController.text : _emailController.text.split('@')[0]);
+
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/home',
+          arguments: {
+            'userName': userName,
+            'userId': user.uid,
+            'isAnonymous': user.isAnonymous,
+            'user': user,
+          },
+        );
+      }
+    });
   }
 
   void _toggleAuthMode() {
@@ -192,89 +265,68 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  void _showForgotPasswordDialog() {
-    final emailController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF667EEA).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.lock_reset,
-                color: Color(0xFF667EEA),
-                size: 20,
-              ),
+  Widget _buildForgotPasswordDialog(TextEditingController emailController) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF667EEA).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 12),
-            const Text("Reset Password"),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Don't worry! Enter your email address and we'll send you instructions to reset your password.",
-              style: TextStyle(height: 1.5),
+            child: const Icon(
+              Icons.lock_reset,
+              color: Color(0xFF667EEA),
+              size: 20,
             ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(
-                hintText: 'Enter your email',
-                prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF667EEA)),
-                filled: true,
-                fillColor: const Color(0xFFF8F9FA),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel", style: TextStyle(color: Color(0xFF636E72))),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text("Reset link sent! Check your email 📧"),
-                    ],
-                  ),
-                  backgroundColor: const Color(0xFF4CAF50),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  margin: const EdgeInsets.all(16),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF667EEA),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          const SizedBox(width: 12),
+          const Text("Reset Password"),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "Don't worry! Enter your email address and we'll send you instructions to reset your password.",
+            style: TextStyle(height: 1.5),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: emailController,
+            decoration: InputDecoration(
+              hintText: 'Enter your email',
+              prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF667EEA)),
+              filled: true,
+              fillColor: const Color(0xFFF8F9FA),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+              ),
             ),
-            child: const Text("Send Reset Link", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text("Cancel", style: TextStyle(color: Color(0xFF636E72))),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF667EEA),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: const Text("Send Reset Link", style: TextStyle(color: Colors.white)),
+        ),
+      ],
     );
   }
 
@@ -286,17 +338,14 @@ class _LoginScreenState extends State<LoginScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF667EEA),
-              Color(0xFF764BA2),
-            ],
+            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
           ),
         ),
         child: Stack(
           children: [
             // Floating background elements
             ...List.generate(5, (index) => _buildFloatingElement(index)),
-            
+
             // Main content
             SafeArea(
               child: FadeTransition(
@@ -310,28 +359,18 @@ class _LoginScreenState extends State<LoginScreen>
                       child: Column(
                         children: [
                           const SizedBox(height: 40),
-
-                          // Logo/Brand Section
                           _buildBrandSection(),
                           const SizedBox(height: 40),
-
-                          // Auth Form
                           _buildAuthForm(),
                           const SizedBox(height: 24),
-
-                          // Auth Button
                           _buildAuthButton(),
                           const SizedBox(height: 20),
-
-                          // Additional Options
+                          _buildAnonymousButton(),
+                          const SizedBox(height: 20),
                           _buildAdditionalOptions(),
                           const SizedBox(height: 24),
-
-                          // Toggle Auth Mode
                           _buildToggleAuthMode(),
                           const SizedBox(height: 20),
-
-                          // Motivational Message
                           _buildMotivationalMessage(),
                           const SizedBox(height: 40),
                         ],
@@ -355,7 +394,7 @@ class _LoginScreenState extends State<LoginScreen>
       const Offset(0.8, 0.8),
       const Offset(0.5, 0.1),
     ];
-    
+
     final sizes = [60.0, 80.0, 50.0, 70.0, 40.0];
     final delays = [0.0, 0.3, 0.6, 0.9, 1.2];
 
@@ -364,7 +403,7 @@ class _LoginScreenState extends State<LoginScreen>
       builder: (context, child) {
         final progress = (_floatingAnimation.value + delays[index]) % 1.0;
         final offset = Offset(0, sin(progress * 2 * pi) * 10);
-        
+
         return Positioned(
           left: MediaQuery.of(context).size.width * positions[index].dx,
           top: MediaQuery.of(context).size.height * positions[index].dy,
@@ -416,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         const SizedBox(height: 24),
-        
+
         Text(
           _isSignUpMode ? "Join Our Community" : "Welcome Back!",
           style: const TextStyle(
@@ -427,7 +466,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         const SizedBox(height: 8),
-        
+
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           decoration: BoxDecoration(
@@ -521,7 +560,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 const Spacer(),
                 TextButton(
-                  onPressed: _showForgotPasswordDialog,
+                  onPressed: _handleForgotPassword,
                   child: const Text(
                     "Forgot Password?",
                     style: TextStyle(
@@ -559,14 +598,14 @@ class _LoginScreenState extends State<LoginScreen>
         prefixIcon: Icon(icon, color: const Color(0xFF667EEA), size: 22),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(
-                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                  color: const Color(0xFF94A3B8),
-                  size: 22,
-                ),
-                onPressed: () =>
-                    setState(() => _isPasswordVisible = !_isPasswordVisible),
-              )
+          icon: Icon(
+            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            color: const Color(0xFF94A3B8),
+            size: 22,
+          ),
+          onPressed: () =>
+              setState(() => _isPasswordVisible = !_isPasswordVisible),
+        )
             : null,
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
@@ -609,7 +648,7 @@ class _LoginScreenState extends State<LoginScreen>
         ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleAuth,
+        onPressed: _isLoading ? null : _handleEmailAuth,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -619,32 +658,73 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         child: _isLoading
             ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  strokeWidth: 2,
-                ),
-              )
+          height: 24,
+          width: 24,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            strokeWidth: 2,
+          ),
+        )
             : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _isSignUpMode ? "Create Account" : "Sign In",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.arrow_forward,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ],
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _isSignUpMode ? "Create Account" : "Sign In",
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward,
+              color: Colors.white,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnonymousButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+      ),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleAnonymousAuth,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.visibility_off,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              "Continue Anonymously",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -689,15 +769,7 @@ class _LoginScreenState extends State<LoginScreen>
                 icon: Icons.g_mobiledata,
                 label: "Google",
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text("Google sign-in coming soon! 🚀"),
-                      backgroundColor: const Color(0xFF667EEA),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.all(16),
-                    ),
-                  );
+                  _showSuccessSnackBar("Google sign-in coming soon! 🚀");
                 },
               ),
             ),
@@ -707,15 +779,7 @@ class _LoginScreenState extends State<LoginScreen>
                 icon: Icons.apple,
                 label: "Apple",
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text("Apple sign-in coming soon! 🍎"),
-                      backgroundColor: const Color(0xFF667EEA),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      margin: const EdgeInsets.all(16),
-                    ),
-                  );
+                  _showSuccessSnackBar("Apple sign-in coming soon! 🍎");
                 },
               ),
             ),

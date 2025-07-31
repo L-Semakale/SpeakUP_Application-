@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "110714445674",
+    "project_id": "speakup-6690f",
+    "storage_bucket": "speakup-6690f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:110714445674:android:9591f2b816bc6fa88b8f13",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTJrOHpVAVsS4PPWhS3ywhXH-8gvmN72c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
