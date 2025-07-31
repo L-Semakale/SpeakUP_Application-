@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,7 +20,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _rememberMe = false;
   bool _isSignUpMode = false;
-  
+
   late AnimationController _animationController;
   late AnimationController _floatingController;
   late Animation<double> _fadeAnimation;
@@ -108,81 +109,42 @@ class _LoginScreenState extends State<LoginScreen>
     return null;
   }
 
-  Future<void> _handleAuth() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+Future<void> _handleAuth() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  _isSignUpMode
-                      ? "Welcome to SpeakUp! 🎉"
-                      : "Welcome back! 😊",
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF4CAF50),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            duration: const Duration(seconds: 2),
-            margin: const EdgeInsets.all(16),
-          ),
+      if (_isSignUpMode) {
+        // CREATE ACCOUNT
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
         );
-
-        // Navigate to home with user's name
-        String userName = _isSignUpMode
-            ? _nameController.text
-            : _emailController.text.split('@')[0];
-        Future.delayed(const Duration(seconds: 1), () {
-          if (mounted) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/home',
-              arguments: userName,
-            );
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 8),
-                Text("Authentication failed. Please try again."),
-              ],
-            ),
-            backgroundColor: const Color(0xFFE53E3E),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
+        // we’ll finish profile in /setup
+        Navigator.pushReplacementNamed(context, '/setup');
+      } else {
+        // SIGN-IN
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
         );
+        Navigator.pushReplacementNamed(context, '/home');
       }
+    } on FirebaseAuthException catch (e) {
+      final msg = e.code == 'email-already-in-use'
+          ? 'That email is already registered'
+          : e.message ?? 'Authentication error';
+      _showError(msg);
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), backgroundColor: const Color(0xFFE53E3E)),
+    );
   }
 
   void _toggleAuthMode() {

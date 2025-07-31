@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import '../service/firebase_service.dart';
+import 'your_support.dart';
 
 class CreatePost extends StatefulWidget {
   const CreatePost({super.key});
@@ -47,15 +49,15 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    
+
     _animationController.forward();
   }
 
@@ -68,65 +70,90 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
   }
 
   void pickFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'png', 'mp4', 'jpeg'],
-    );
-
-    if (result != null) {
-      setState(() {
-        selectedFile = result.files.first;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('File "${result.files.first.name}" selected'),
-          backgroundColor: const Color(0xFF667EEA),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'png', 'mp4', 'jpeg'],
       );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.bytes != null) {
+          setState(() {
+            selectedFile = file;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File "${file.name}" selected'),
+              backgroundColor: const Color(0xFF667EEA),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        } else {
+          _showErrorSnackBar('Could not read file contents');
+        }
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to pick file: ${e.toString()}');
     }
   }
 
   void _sharePost() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (selectedMood == null) {
       _showErrorSnackBar('Please select your current mood');
       return;
     }
-    
+
     if (_thoughtsController.text.trim().isEmpty) {
       _showErrorSnackBar('Please share your thoughts');
       return;
     }
 
     setState(() => isPosting = true);
-    
-    // Simulate posting delay
-    await Future.delayed(const Duration(seconds: 2));
-    
-    setState(() => isPosting = false);
-    
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Your post has been shared successfully!'),
-          ],
+
+    try {
+      await FirebaseService().savePost(
+        title: _titleController.text.trim(),
+        content: _thoughtsController.text.trim(),
+        mood: selectedMood!,
+        supportTypes: selectedSupport,
+        allowComments: allowComments,
+        visibility: visibility,
+        file: selectedFile,
+      );
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Your post has been shared successfully!'),
+            ],
+          ),
+          backgroundColor: const Color(0xFF4CAF50),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
-        backgroundColor: const Color(0xFF4CAF50),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-    
-    // Navigate back
-    Navigator.pop(context);
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const YourSupportScreen()),
+      );
+    } catch (e) {
+      setState(() => isPosting = false);
+      _showErrorSnackBar(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   void _showErrorSnackBar(String message) {
@@ -163,7 +190,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
         actions: [
           TextButton(
             onPressed: _thoughtsController.text.isNotEmpty ? () {
-              // Save draft logic
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text('Draft saved'),
@@ -198,7 +224,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Encouragement message
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -232,10 +257,9 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
 
-                // Post Title
                 _buildSectionTitle('Give your post a title'),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -252,10 +276,9 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                   },
                   onChanged: (value) => setState(() {}),
                 ),
-                
+
                 const SizedBox(height: 24),
 
-                // Share Your Thoughts
                 _buildSectionTitle('Share your thoughts'),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -276,7 +299,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                 
                 const SizedBox(height: 24),
 
-                // Select Mood
                 _buildSectionTitle('How are you feeling right now?'),
                 const SizedBox(height: 12),
                 Wrap(
@@ -334,7 +356,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                 
                 const SizedBox(height: 24),
 
-                // Type of Support Needed
                 _buildSectionTitle('What kind of support do you need?'),
                 const SizedBox(height: 12),
                 Column(
@@ -413,7 +434,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                 
                 const SizedBox(height: 24),
 
-                // Media File Picker
                 _buildSectionTitle('Add a photo or video (optional)'),
                 const SizedBox(height: 8),
                 GestureDetector(
@@ -463,7 +483,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                 
                 const SizedBox(height: 24),
 
-                // Settings
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -531,7 +550,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                 
                 const SizedBox(height: 32),
 
-                // Share Button
                 Container(
                   width: double.infinity,
                   height: 56,
@@ -587,7 +605,6 @@ class _CreatePostState extends State<CreatePost> with TickerProviderStateMixin {
                 
                 const SizedBox(height: 16),
                 
-                // Privacy note
                 const Text(
                   '🔒 Your post will be shared anonymously. We prioritize your privacy and safety.',
                   textAlign: TextAlign.center,

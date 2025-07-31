@@ -1,6 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'profile_update.dart';
-
+import 'login_screen.dart';
 class AppSettingsScreen extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
@@ -31,21 +32,21 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
   void initState() {
     super.initState();
     isDark = widget.isDarkMode;
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart));
-    
+
     _animationController.forward();
   }
 
@@ -56,31 +57,39 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
   }
 
   void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.logout, color: Color(0xFF667EEA)),
-              SizedBox(width: 8),
-              Text('Log Out'),
-            ],
-          ),
-          content: const Text('Are you sure you want to log out of your account?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Color(0xFF636E72)),
-              ),
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: Color(0xFF667EEA)),
+            SizedBox(width: 8),
+            Text('Log Out'),
+          ],
+        ),
+        content: const Text('Are you sure you want to log out of your account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Color(0xFF636E72)),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Implement logout logic here
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              try {
+                await FirebaseAuth.instance.signOut();
+
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => LoginScreen()),
+                );
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: const Text('Logged out successfully'),
@@ -89,18 +98,26 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF667EEA),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Log Out', style: TextStyle(color: Colors.white)),
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to log out: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF667EEA),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-          ],
-        );
-      },
-    );
-  }
+            child: const Text('Log Out', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   void _showDeleteAccountDialog() {
     showDialog(
@@ -135,7 +152,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                // Implement delete account logic here
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: const Text('Account deletion initiated'),
@@ -298,7 +315,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
 
               const SizedBox(height: 24),
 
-              // Appearance & Preferences
               _buildSectionTitle('Appearance & Preferences'),
               const SizedBox(height: 12),
               _buildSettingsCard([
@@ -327,7 +343,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
 
               const SizedBox(height: 20),
 
-              // Notifications
               _buildSectionTitle('Notifications'),
               const SizedBox(height: 12),
               _buildSettingsCard([
@@ -356,7 +371,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
 
               const SizedBox(height: 20),
 
-              // Privacy & Security
               _buildSectionTitle('Privacy & Security'),
               const SizedBox(height: 12),
               _buildSettingsCard([
@@ -377,7 +391,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
                   subtitle: 'Read our privacy policy',
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Navigate to privacy policy
                   },
                 ),
                 _buildDivider(),
@@ -387,14 +400,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
                   subtitle: 'Read our terms of service',
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Navigate to terms of service
                   },
                 ),
               ]),
 
               const SizedBox(height: 20),
 
-              // Support
               _buildSectionTitle('Support'),
               const SizedBox(height: 12),
               _buildSettingsCard([
@@ -404,7 +415,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
                   subtitle: 'Get help and find answers',
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Navigate to help
                   },
                 ),
                 _buildDivider(),
@@ -414,7 +424,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
                   subtitle: 'Help us improve the app',
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Show feedback form
                   },
                 ),
                 _buildDivider(),
@@ -424,14 +433,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
                   subtitle: 'Leave a review on the app store',
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Open app store for rating
                   },
                 ),
               ]),
 
               const SizedBox(height: 32),
 
-              // Logout Button
               Container(
                 width: double.infinity,
                 height: 56,
@@ -458,7 +465,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
 
               const SizedBox(height: 16),
 
-              // Delete Account Button
               Container(
                 width: double.infinity,
                 height: 56,
@@ -484,7 +490,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen>
 
               const SizedBox(height: 24),
 
-              // App Version
               Center(
                 child: Text(
                   'SpeakUp v1.0.0',

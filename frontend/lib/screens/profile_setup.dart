@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({Key? key}) : super(key: key);
@@ -11,6 +13,10 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     with TickerProviderStateMixin {
   final _displayNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final _contactNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -34,12 +40,36 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   ];
 
   final List<Map<String, dynamic>> _goals = [
-    {'title': 'Manage Anxiety', 'icon': Icons.psychology, 'color': Color(0xFF667EEA)},
-    {'title': 'Find Community', 'icon': Icons.group, 'color': Color(0xFF4CAF50)},
-    {'title': 'Improve Sleep', 'icon': Icons.bedtime, 'color': Color(0xFF9C27B0)},
-    {'title': 'Overcome Depression', 'icon': Icons.favorite, 'color': Color(0xFFE91E63)},
-    {'title': 'Professional Help', 'icon': Icons.medical_services, 'color': Color(0xFFFF9800)},
-    {'title': 'Stress Management', 'icon': Icons.self_improvement, 'color': Color(0xFF00BCD4)},
+    {
+      'title': 'Manage Anxiety',
+      'icon': Icons.psychology,
+      'color': Color(0xFF667EEA),
+    },
+    {
+      'title': 'Find Community',
+      'icon': Icons.group,
+      'color': Color(0xFF4CAF50),
+    },
+    {
+      'title': 'Improve Sleep',
+      'icon': Icons.bedtime,
+      'color': Color(0xFF9C27B0),
+    },
+    {
+      'title': 'Overcome Depression',
+      'icon': Icons.favorite,
+      'color': Color(0xFFE91E63),
+    },
+    {
+      'title': 'Professional Help',
+      'icon': Icons.medical_services,
+      'color': Color(0xFFFF9800),
+    },
+    {
+      'title': 'Stress Management',
+      'icon': Icons.self_improvement,
+      'color': Color(0xFF00BCD4),
+    },
   ];
 
   final List<Map<String, dynamic>> _supportTypes = [
@@ -76,16 +106,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart));
-    
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutQuart,
+          ),
+        );
+
     _animationController.forward();
   }
 
@@ -93,6 +126,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   void dispose() {
     _animationController.dispose();
     _displayNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _contactNameController.dispose();
     _phoneController.dispose();
     super.dispose();
@@ -106,10 +142,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF667EEA),
-              Color(0xFF764BA2),
-            ],
+            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
           ),
         ),
         child: SafeArea(
@@ -118,10 +151,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             builder: (context, child) {
               return SlideTransition(
                 position: _slideAnimation,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: child,
-                ),
+                child: FadeTransition(opacity: _fadeAnimation, child: child),
               );
             },
             child: Form(
@@ -153,7 +183,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Display Name Section
-                          _buildDisplayNameSection(),
+                          _buildPersonalDetailsSection(),
                           const SizedBox(height: 32),
 
                           // Avatar Selection
@@ -264,22 +294,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     );
   }
 
-  Widget _buildDisplayNameSection() {
+  Widget _buildPersonalDetailsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          'What should we call you?',
-          'Choose a display name (optional)',
-          Icons.badge,
-          Color(0xFF667EEA),
+          'Personal Details',
+          'Choose a display name, enter your email, and create your password',
+          Icons.person,
+          const Color(0xFF667EEA),
         ),
         const SizedBox(height: 16),
+
+        // Display Name Field
         TextFormField(
           controller: _displayNameController,
           decoration: InputDecoration(
             hintText: 'Enter your preferred name',
-            prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF667EEA)),
+            prefixIcon: const Icon(
+              Icons.person_outline,
+              color: Color(0xFF667EEA),
+            ),
             filled: true,
             fillColor: const Color(0xFFF8F9FA),
             border: OutlineInputBorder(
@@ -290,7 +325,97 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Email Field
+        TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            hintText: 'Enter your email',
+            prefixIcon: const Icon(
+              Icons.email_outlined,
+              color: Color(0xFF667EEA),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Password Field
+        TextFormField(
+          controller: _passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            hintText: 'Create a password',
+            prefixIcon: const Icon(
+              Icons.lock_outline,
+              color: Color(0xFF667EEA),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Confirm Password Field
+        TextFormField(
+          controller: _confirmPasswordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            hintText: 'Confirm your password',
+            prefixIcon: const Icon(
+              Icons.lock_person_outlined,
+              color: Color(0xFF667EEA),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFF8F9FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
           ),
         ),
       ],
@@ -321,29 +446,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           itemBuilder: (context, index) {
             final avatar = _avatarOptions[index];
             final isSelected = _selectedAvatar == index;
-            
+
             return GestureDetector(
               onTap: () => setState(() => _selectedAvatar = index),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 decoration: BoxDecoration(
-                  color: isSelected 
+                  color: isSelected
                       ? avatar['color'].withOpacity(0.1)
                       : const Color(0xFFF8F9FA),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected 
-                        ? avatar['color']
-                        : Colors.grey.shade300,
+                    color: isSelected ? avatar['color'] : Colors.grey.shade300,
                     width: isSelected ? 2 : 1,
                   ),
-                  boxShadow: isSelected ? [
-                    BoxShadow(
-                      color: avatar['color'].withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ] : null,
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: avatar['color'].withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Center(
                   child: Text(
@@ -385,18 +510,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 style: TextStyle(color: Color(0xFF636E72)),
               ),
               value: _selectedAgeRange.isEmpty ? null : _selectedAgeRange,
-              icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF667EEA)),
-              items: ['18-25', '26-35', '36-45', '46-55', '56-65', '65+']
-                  .map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(
-                        value,
-                        style: const TextStyle(color: Color(0xFF2D3436)),
-                      ),
-                    );
-                  })
-                  .toList(),
+              icon: const Icon(
+                Icons.keyboard_arrow_down,
+                color: Color(0xFF667EEA),
+              ),
+              items: ['18-25', '26-35', '36-45', '46-55', '56-65', '65+'].map((
+                String value,
+              ) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(
+                    value,
+                    style: const TextStyle(color: Color(0xFF2D3436)),
+                  ),
+                );
+              }).toList(),
               onChanged: (String? newValue) {
                 setState(() => _selectedAgeRange = newValue ?? '');
               },
@@ -435,15 +563,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? goal['color'].withOpacity(0.1)
                       : const Color(0xFFF8F9FA),
                   border: Border.all(
-                    color: isSelected
-                        ? goal['color']
-                        : Colors.grey.shade300,
+                    color: isSelected ? goal['color'] : Colors.grey.shade300,
                   ),
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -453,15 +582,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     Icon(
                       goal['icon'],
                       size: 16,
-                      color: isSelected ? goal['color'] : const Color(0xFF636E72),
+                      color: isSelected
+                          ? goal['color']
+                          : const Color(0xFF636E72),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       goal['title'],
                       style: TextStyle(
-                        color: isSelected ? goal['color'] : const Color(0xFF2D3436),
+                        color: isSelected
+                            ? goal['color']
+                            : const Color(0xFF2D3436),
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ],
@@ -527,7 +662,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                         ),
                         child: Icon(
                           support['icon'],
-                          color: isSelected ? support['color'] : const Color(0xFF636E72),
+                          color: isSelected
+                              ? support['color']
+                              : const Color(0xFF636E72),
                           size: 20,
                         ),
                       ),
@@ -589,7 +726,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           controller: _contactNameController,
           decoration: InputDecoration(
             hintText: 'Trusted contact name',
-            prefixIcon: const Icon(Icons.person_outline, color: Color(0xFFE53E3E)),
+            prefixIcon: const Icon(
+              Icons.person_outline,
+              color: Color(0xFFE53E3E),
+            ),
             filled: true,
             fillColor: const Color(0xFFF8F9FA),
             border: OutlineInputBorder(
@@ -600,7 +740,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -609,7 +752,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
           keyboardType: TextInputType.phone,
           decoration: InputDecoration(
             hintText: 'Phone number',
-            prefixIcon: const Icon(Icons.phone_outlined, color: Color(0xFFE53E3E)),
+            prefixIcon: const Icon(
+              Icons.phone_outlined,
+              color: Color(0xFFE53E3E),
+            ),
             filled: true,
             fillColor: const Color(0xFFF8F9FA),
             border: OutlineInputBorder(
@@ -620,14 +766,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title, String subtitle, IconData icon, Color color) {
+  Widget _buildSectionHeader(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+  ) {
     return Row(
       children: [
         Container(
@@ -653,10 +807,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               ),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF636E72),
-                ),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF636E72)),
               ),
             ],
           ),
@@ -683,17 +834,65 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         ],
       ),
       child: ElevatedButton(
-        onPressed: () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(
-                userName: _displayNameController.text.isNotEmpty
-                    ? _displayNameController.text
-                    : 'Anonymous',
+        onPressed: () async {
+          if (!_formKey.currentState!.validate()) return;
+
+          // Show loading indicator here if you want
+
+          try {
+            // 1. Register user with Firebase Auth
+            UserCredential credential = await FirebaseAuth.instance
+                .createUserWithEmailAndPassword(
+                  email: _emailController.text.trim(),
+                  password: _passwordController.text.trim(),
+                );
+
+            User? user = credential.user;
+
+            // 2. Update display name in Firebase Auth profile
+            await user?.updateDisplayName(_displayNameController.text.trim());
+
+            // 3. Prepare user profile data for Firestore
+            Map<String, dynamic> userProfile = {
+              'displayName': _displayNameController.text.trim(),
+              'email': _emailController.text.trim(),
+              'avatar': _avatarOptions[_selectedAvatar]['emoji'],
+              'ageRange': _selectedAgeRange,
+              'goals': _selectedGoals,
+              'supportTypes': _selectedSupport,
+              'emergencyContact': {
+                'name': _contactNameController.text.trim(),
+                'phone': _phoneController.text.trim(),
+              },
+              'createdAt': FieldValue.serverTimestamp(),
+            };
+
+            // 4. Save user profile to Firestore under this UID
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user!.uid)
+                .set(userProfile);
+
+            // 5. Navigate to HomeScreen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HomeScreen(
+                  userName: _displayNameController.text.isNotEmpty
+                      ? _displayNameController.text
+                      : 'Anonymous',
+                ),
               ),
-            ),
-          );
+            );
+          } on FirebaseAuthException catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(e.message ?? 'Registration failed')),
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Setup failed: $e')));
+          }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
@@ -714,11 +913,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               ),
             ),
             SizedBox(width: 8),
-            Icon(
-              Icons.arrow_forward,
-              color: Colors.white,
-              size: 20,
-            ),
+            Icon(Icons.arrow_forward, color: Colors.white, size: 20),
           ],
         ),
       ),

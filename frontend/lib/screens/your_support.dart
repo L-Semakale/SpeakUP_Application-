@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../service/firebase_service.dart';
 import 'professional_support.dart';
 
 class YourSupportScreen extends StatefulWidget {
@@ -15,52 +17,9 @@ class _YourSupportScreenState extends State<YourSupportScreen>
   late Animation<Offset> _slideAnimation;
 
   bool _isLiked = false;
-  int _likeCount = 24;
   bool _isBookmarked = false;
   final TextEditingController _replyController = TextEditingController();
-
-  final List<Map<String, dynamic>> _replies = [
-    {
-      "name": "Alex",
-      "avatar": "🌸",
-      "comment": "You're not alone in feeling this way. I've been there too. What helps me is taking deep breaths and reminding myself that this feeling will pass. Stay strong! 💪",
-      "time": "1h ago",
-      "likes": 12,
-      "isLiked": false,
-      "supportType": "Emotional Support",
-      "color": Color(0xFF4CAF50),
-    },
-    {
-      "name": "Maria",
-      "avatar": "🌟",
-      "comment": "Same here, sending you so much love and positive energy. Remember that it's okay to have difficult weeks - you're human and you're doing your best. 💜",
-      "time": "45m ago",
-      "likes": 8,
-      "isLiked": false,
-      "supportType": "Peer Support",
-      "color": Color(0xFFE91E63),
-    },
-    {
-      "name": "John",
-      "avatar": "🧘",
-      "comment": "Have you tried the 4-7-8 breathing technique? I found it really helpful for anxiety. Also, the grounding exercises in the resources section work wonders. Hope this helps!",
-      "time": "30m ago",
-      "likes": 15,
-      "isLiked": false,
-      "supportType": "Practical Advice",
-      "color": Color(0xFF667EEA),
-    },
-    {
-      "name": "Sarah",
-      "avatar": "💜",
-      "comment": "Thank you for sharing this. It takes courage to open up. I've been having a tough week too, and knowing others understand makes me feel less alone.",
-      "time": "15m ago",
-      "likes": 6,
-      "isLiked": false,
-      "supportType": "Shared Experience",
-      "color": Color(0xFF9C27B0),
-    },
-  ];
+  final FirebaseService _firebaseService = FirebaseService();
 
   @override
   void initState() {
@@ -69,16 +28,19 @@ class _YourSupportScreenState extends State<YourSupportScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
-    
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart));
-    
+
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutQuart,
+          ),
+        );
+
     _animationController.forward();
   }
 
@@ -89,7 +51,12 @@ class _YourSupportScreenState extends State<YourSupportScreen>
     super.dispose();
   }
 
-  void _showReplySheet(BuildContext context, String replyingTo, String avatar) {
+  void _showReplySheet(
+    BuildContext context,
+    String replyingTo,
+    String avatar,
+    String postId,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -120,10 +87,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Text(
-                    avatar,
-                    style: const TextStyle(fontSize: 24),
-                  ),
+                  Text(avatar, style: const TextStyle(fontSize: 24)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -190,25 +154,50 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_replyController.text.trim().isNotEmpty) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: Colors.white),
-                                  SizedBox(width: 8),
-                                  Text('Your supportive reply was sent! 💜'),
-                                ],
+                          try {
+                            await _firebaseService.addReply(postId, {
+                              'name': 'You', // Replace with actual user name
+                              'avatar': '🌱',
+                              'comment': _replyController.text,
+                              'time': 'Just now',
+                              'likes': 0,
+                              'isLiked': false,
+                              'supportType': 'Supportive Reply',
+                              'color': Color(0xFF667EEA),
+                            });
+
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text('Your supportive reply was sent! 💜'),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF4CAF50),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                margin: const EdgeInsets.all(16),
                               ),
-                              backgroundColor: const Color(0xFF4CAF50),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              margin: const EdgeInsets.all(16),
-                            ),
-                          );
-                          _replyController.clear();
+                            );
+                            _replyController.clear();
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to send reply: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -270,10 +259,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
             const Text(
               'Choose the type of support that feels right for you',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF636E72),
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Color(0xFF636E72), fontSize: 14),
             ),
             const SizedBox(height: 24),
             _buildSupportOption(
@@ -319,7 +305,13 @@ class _YourSupportScreenState extends State<YourSupportScreen>
     );
   }
 
-  Widget _buildSupportOption(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildSupportOption(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -340,16 +332,9 @@ class _YourSupportScreenState extends State<YourSupportScreen>
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(
-            color: Color(0xFF636E72),
-            fontSize: 12,
-          ),
+          style: const TextStyle(color: Color(0xFF636E72), fontSize: 12),
         ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          color: color,
-          size: 16,
-        ),
+        trailing: Icon(Icons.arrow_forward_ios, color: color, size: 16),
         onTap: onTap,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -383,7 +368,9 @@ class _YourSupportScreenState extends State<YourSupportScreen>
           IconButton(
             icon: Icon(
               _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: _isBookmarked ? const Color(0xFF667EEA) : const Color(0xFF636E72),
+              color: _isBookmarked
+                  ? const Color(0xFF667EEA)
+                  : const Color(0xFF636E72),
             ),
             onPressed: () {
               setState(() => _isBookmarked = !_isBookmarked);
@@ -391,7 +378,9 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                 SnackBar(
                   content: Text(_isBookmarked ? 'Post saved' : 'Post unsaved'),
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   margin: const EdgeInsets.all(16),
                 ),
               );
@@ -399,64 +388,91 @@ class _YourSupportScreenState extends State<YourSupportScreen>
           ),
         ],
       ),
-      body: AnimatedBuilder(
-        animation: _animationController,
-        builder: (context, child) {
-          return SlideTransition(
-            position: _slideAnimation,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: child,
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firebaseService.getPosts(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final posts = snapshot.data!.docs;
+
+          if (posts.isEmpty) {
+            return const Center(
+              child: Text('No posts yet. Be the first to share!'),
+            );
+          }
+
+          return AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return SlideTransition(
+                position: _slideAnimation,
+                child: FadeTransition(opacity: _fadeAnimation, child: child),
+              );
+            },
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Original Post
+                  _buildOriginalPost(posts.first),
+                  const SizedBox(height: 24),
+
+                  // Support Stats
+                  _buildSupportStats(posts.first),
+                  const SizedBox(height: 24),
+
+                  // Section Header
+                  _buildSectionHeader(),
+                  const SizedBox(height: 16),
+
+                  // Replies
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _firebaseService.getRepliesStream(posts.first.id),
+                    builder: (context, replySnapshot) {
+                      if (replySnapshot.hasError) {
+                        return Text('Error: ${replySnapshot.error}');
+                      }
+
+                      if (replySnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const CircularProgressIndicator();
+                      }
+
+                      final replies = replySnapshot.data!.docs;
+
+                      return Column(
+                        children: replies.map((replyDoc) {
+                          final reply = replyDoc.data() as Map<String, dynamic>;
+                          return _buildReplyCard(reply, posts.first.id);
+                        }).toList(),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Professional Support CTA
+                  _buildProfessionalSupportCTA(),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           );
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Original Post
-              _buildOriginalPost(),
-              const SizedBox(height: 24),
-
-              // Support Stats
-              _buildSupportStats(),
-              const SizedBox(height: 24),
-
-              // Section Header
-              _buildSectionHeader(),
-              const SizedBox(height: 16),
-
-              // Replies
-              ..._replies.asMap().entries.map((entry) {
-                final index = entry.key;
-                final reply = entry.value;
-                return TweenAnimationBuilder<double>(
-                  duration: Duration(milliseconds: 300 + (index * 100)),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Transform.translate(
-                      offset: Offset(0, 30 * (1 - value)),
-                      child: Opacity(opacity: value, child: child),
-                    );
-                  },
-                  child: _buildReplyCard(reply, index),
-                );
-              }).toList(),
-
-              const SizedBox(height: 32),
-
-              // Professional Support CTA
-              _buildProfessionalSupportCTA(),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
       ),
     );
   }
 
-  Widget _buildOriginalPost() {
+  Widget _buildOriginalPost(DocumentSnapshot post) {
+    final data = post.data() as Map<String, dynamic>;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -487,10 +503,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Center(
-                  child: Text(
-                    '🌱',
-                    style: TextStyle(fontSize: 24),
-                  ),
+                  child: Text('🌱', style: TextStyle(fontSize: 24)),
                 ),
               ),
               const SizedBox(width: 16),
@@ -508,16 +521,16 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                     ),
                     Text(
                       '2 hours ago',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -534,9 +547,9 @@ class _YourSupportScreenState extends State<YourSupportScreen>
             ],
           ),
           const SizedBox(height: 20),
-          const Text(
-            "It has been a long week, and I'm feeling really anxious. Some days feel harder than others, and today is one of those days. I'm grateful for this community where I can share these feelings.",
-            style: TextStyle(
+          Text(
+            data['content'] ?? "No content",
+            style: const TextStyle(
               fontSize: 16,
               color: Colors.white,
               height: 1.5,
@@ -547,15 +560,16 @@ class _YourSupportScreenState extends State<YourSupportScreen>
             children: [
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    _isLiked = !_isLiked;
-                    _likeCount += _isLiked ? 1 : -1;
-                  });
+                  _firebaseService.likePost(post.id, _isLiked);
+                  setState(() => _isLiked = !_isLiked);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: _isLiked 
+                    color: _isLiked
                         ? Colors.white.withOpacity(0.2)
                         : Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -570,7 +584,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '$_likeCount',
+                        '${data['likeCount'] ?? 0}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -581,29 +595,35 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.chat_bubble_outline,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${_replies.length}',
-                      style: const TextStyle(
+              GestureDetector(
+                onTap: () => _showReplySheet(context, 'You', '🌱', post.id),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.chat_bubble_outline,
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                        size: 18,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        '${data['commentCount'] ?? 0}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const Spacer(),
@@ -613,11 +633,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                   color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  Icons.share,
-                  color: Colors.white,
-                  size: 18,
-                ),
+                child: const Icon(Icons.share, color: Colors.white, size: 18),
               ),
             ],
           ),
@@ -626,7 +642,9 @@ class _YourSupportScreenState extends State<YourSupportScreen>
     );
   }
 
-  Widget _buildSupportStats() {
+  Widget _buildSupportStats(DocumentSnapshot post) {
+    final data = post.data() as Map<String, dynamic>;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -645,29 +663,21 @@ class _YourSupportScreenState extends State<YourSupportScreen>
           Expanded(
             child: _buildStatItem(
               'Support Received',
-              '${_replies.length}',
+              '${data['commentCount'] ?? 0}',
               Icons.favorite,
               Color(0xFFE91E63),
             ),
           ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.grey.shade200,
-          ),
+          Container(width: 1, height: 40, color: Colors.grey.shade200),
           Expanded(
             child: _buildStatItem(
               'Community Love',
-              '$_likeCount',
+              '${data['likeCount'] ?? 0}',
               Icons.people,
               Color(0xFF4CAF50),
             ),
           ),
-          Container(
-            width: 1,
-            height: 40,
-            color: Colors.grey.shade200,
-          ),
+          Container(width: 1, height: 40, color: Colors.grey.shade200),
           Expanded(
             child: _buildStatItem(
               'Response Time',
@@ -681,7 +691,12 @@ class _YourSupportScreenState extends State<YourSupportScreen>
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
@@ -697,10 +712,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF636E72),
-          ),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF636E72)),
         ),
       ],
     );
@@ -736,10 +748,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
               ),
               Text(
                 'People who care about your wellbeing',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF636E72),
-                ),
+                style: TextStyle(fontSize: 14, color: Color(0xFF636E72)),
               ),
             ],
           ),
@@ -757,7 +766,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
     );
   }
 
-  Widget _buildReplyCard(Map<String, dynamic> reply, int index) {
+  Widget _buildReplyCard(Map<String, dynamic> reply, String postId) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -808,7 +817,10 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: reply['color'].withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -850,15 +862,15 @@ class _YourSupportScreenState extends State<YourSupportScreen>
             children: [
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    reply['isLiked'] = !reply['isLiked'];
-                    reply['likes'] += reply['isLiked'] ? 1 : -1;
-                  });
+                  // Handle like for reply
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: reply['isLiked'] 
+                    color: reply['isLiked']
                         ? reply['color'].withOpacity(0.1)
                         : const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(16),
@@ -867,15 +879,21 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        reply['isLiked'] ? Icons.favorite : Icons.favorite_border,
-                        color: reply['isLiked'] ? reply['color'] : const Color(0xFF636E72),
+                        reply['isLiked']
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: reply['isLiked']
+                            ? reply['color']
+                            : const Color(0xFF636E72),
                         size: 16,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         '${reply['likes']}',
                         style: TextStyle(
-                          color: reply['isLiked'] ? reply['color'] : const Color(0xFF636E72),
+                          color: reply['isLiked']
+                              ? reply['color']
+                              : const Color(0xFF636E72),
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
                         ),
@@ -886,9 +904,17 @@ class _YourSupportScreenState extends State<YourSupportScreen>
               ),
               const SizedBox(width: 12),
               GestureDetector(
-                onTap: () => _showReplySheet(context, reply['name'], reply['avatar']),
+                onTap: () => _showReplySheet(
+                  context,
+                  reply['name'],
+                  reply['avatar'],
+                  postId,
+                ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(16),
@@ -896,11 +922,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.reply,
-                        color: Color(0xFF636E72),
-                        size: 16,
-                      ),
+                      Icon(Icons.reply, color: Color(0xFF636E72), size: 16),
                       SizedBox(width: 4),
                       Text(
                         'Reply',
@@ -915,11 +937,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                 ),
               ),
               const Spacer(),
-              const Icon(
-                Icons.more_horiz,
-                color: Color(0xFF636E72),
-                size: 20,
-              ),
+              const Icon(Icons.more_horiz, color: Color(0xFF636E72), size: 20),
             ],
           ),
         ],
@@ -964,10 +982,7 @@ class _YourSupportScreenState extends State<YourSupportScreen>
                     ),
                     Text(
                       'Professional help is always available',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.white),
                     ),
                   ],
                 ),

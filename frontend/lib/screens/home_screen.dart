@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'create_post.dart';
 import 'resources_screen.dart';
 import 'app_setting.dart';
@@ -16,41 +18,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-
-  final List<Map<String, dynamic>> _posts = [
-    {
-      'userName': 'Anonymous User',
-      'content': 'Feeling anxious today, but trying to stay positive 💪',
-      'likes': 5,
-      'time': '2h ago',
-      'isLiked': false,
-      'avatar': '🌸',
-    },
-    {
-      'userName': 'Hope Seeker',
-      'content': 'Had a great therapy session. Progress is slow but steady.',
-      'likes': 8,
-      'time': '4h ago',
-      'isLiked': false,
-      'avatar': '🌟',
-    },
-    {
-      'userName': 'Mindful Soul',
-      'content': 'Remember: It\'s okay to not be okay sometimes. 🌱',
-      'likes': 12,
-      'time': '6h ago',
-      'isLiked': false,
-      'avatar': '🧘',
-    },
-    {
-      'userName': 'Brave Heart',
-      'content': 'Taking small steps every day. Self-care is not selfish ✨',
-      'likes': 15,
-      'time': '8h ago',
-      'isLiked': false,
-      'avatar': '💜',
-    },
-  ];
 
   @override
   void initState() {
@@ -115,7 +82,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              icon: const Icon(Icons.settings_outlined, color: Color(0xFF636E72)),
+              icon: const Icon(
+                Icons.settings_outlined,
+                color: Color(0xFF636E72),
+              ),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -161,12 +131,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             } else if (index == 2) {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const YourSupportScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const YourSupportScreen(),
+                ),
               );
             } else if (index == 3) {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ResourcesScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const ResourcesScreen(),
+                ),
               );
             }
           },
@@ -239,10 +213,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 const SizedBox(height: 8),
                 const Text(
                   'How are you feeling today?',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -273,7 +244,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 const Spacer(),
                 TextButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    // TODO: Implement filtering if needed
+                  },
                   icon: const Icon(Icons.filter_alt_outlined, size: 18),
                   label: const Text('Filter'),
                   style: TextButton.styleFrom(
@@ -284,216 +257,281 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final post = _posts[index];
-              return TweenAnimationBuilder<double>(
-                duration: Duration(milliseconds: 300 + (index * 100)),
-                tween: Tween(begin: 0.0, end: 1.0),
-                builder: (context, value, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 30 * (1 - value)),
-                    child: Opacity(opacity: value, child: child),
-                  );
-                },
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+
+        SliverToBoxAdapter(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('posts')
+                .orderBy('timestamp', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: Text('No posts yet.')),
+                );
+              }
+              final posts = snapshot.data!.docs;
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: posts.length,
+                itemBuilder: (context, index) {
+                  final post = posts[index].data()! as Map<String, dynamic>;
+
+                  bool isLiked = false;
+                  int likes = post['likes'] ?? 0;
+
+                  return TweenAnimationBuilder<double>(
+                    duration: Duration(milliseconds: 300 + (index * 100)),
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, 30 * (1 - value)),
+                        child: Opacity(opacity: value, child: child),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xFF667EEA).withOpacity(0.2),
-                                    const Color(0xFF764BA2).withOpacity(0.2),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        const Color(
+                                          0xFF667EEA,
+                                        ).withOpacity(0.2),
+                                        const Color(
+                                          0xFF764BA2,
+                                        ).withOpacity(0.2),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      post['avatar'] ?? '👤',
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        post['userName'] ?? 'Anonymous',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Color(0xFF2D3436),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _formatTimestamp(post['timestamp']),
+                                        style: const TextStyle(
+                                          color: Color(0xFF636E72),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuButton(
+                                  icon: const Icon(
+                                    Icons.more_horiz,
+                                    color: Color(0xFF636E72),
+                                  ),
+                                  itemBuilder: (context) => const [
+                                    PopupMenuItem(child: Text('Report')),
+                                    PopupMenuItem(child: Text('Hide')),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  post['avatar'],
-                                  style: const TextStyle(fontSize: 20),
-                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              post['content'] ?? '',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                height: 1.5,
+                                color: Color(0xFF2D3436),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    post['userName'],
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Color(0xFF2D3436),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    post['time'],
-                                    style: const TextStyle(
-                                      color: Color(0xFF636E72),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            PopupMenuButton(
-                              icon: const Icon(
-                                Icons.more_horiz,
-                                color: Color(0xFF636E72),
-                              ),
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  child: Text('Report'),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                StatefulBuilder(
+                                  builder: (context, setInnerState) {
+                                    return GestureDetector(
+                                      onTap: () async {
+                                        setInnerState(() {
+                                          isLiked = !isLiked;
+                                          likes = isLiked
+                                              ? likes + 1
+                                              : likes - 1;
+                                        });
+
+                                        final postId = posts[index].id;
+                                        final postRef = FirebaseFirestore
+                                            .instance
+                                            .collection('posts')
+                                            .doc(postId);
+
+                                        await FirebaseFirestore.instance
+                                            .runTransaction((
+                                              transaction,
+                                            ) async {
+                                              final freshSnapshot =
+                                                  await transaction.get(
+                                                    postRef,
+                                                  );
+                                              final currentLikes =
+                                                  freshSnapshot.get('likes') ??
+                                                  0;
+                                              final newLikes = isLiked
+                                                  ? currentLikes + 1
+                                                  : currentLikes - 1;
+                                              transaction.update(postRef, {
+                                                'likes': newLikes,
+                                              });
+                                            });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isLiked
+                                              ? const Color(
+                                                  0xFF667EEA,
+                                                ).withOpacity(0.1)
+                                              : const Color(0xFFF1F3F4),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              isLiked
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              color: isLiked
+                                                  ? const Color(0xFF667EEA)
+                                                  : const Color(0xFF636E72),
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '$likes',
+                                              style: TextStyle(
+                                                color: isLiked
+                                                    ? const Color(0xFF667EEA)
+                                                    : const Color(0xFF636E72),
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                const PopupMenuItem(
-                                  child: Text('Hide'),
+                                const SizedBox(width: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F3F4),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.chat_bubble_outline,
+                                        color: Color(0xFF636E72),
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Reply',
+                                        style: TextStyle(
+                                          color: Color(0xFF636E72),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F3F4),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(
+                                    Icons.share_outlined,
+                                    color: Color(0xFF636E72),
+                                    size: 18,
+                                  ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          post['content'],
-                          style: const TextStyle(
-                            fontSize: 15,
-                            height: 1.5,
-                            color: Color(0xFF2D3436),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  post['isLiked'] = !post['isLiked'];
-                                  if (post['isLiked']) {
-                                    post['likes']++;
-                                  } else {
-                                    post['likes']--;
-                                  }
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: post['isLiked']
-                                      ? const Color(0xFF667EEA).withOpacity(0.1)
-                                      : const Color(0xFFF1F3F4),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      post['isLiked']
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color: post['isLiked']
-                                          ? const Color(0xFF667EEA)
-                                          : const Color(0xFF636E72),
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${post['likes']}',
-                                      style: TextStyle(
-                                        color: post['isLiked']
-                                            ? const Color(0xFF667EEA)
-                                            : const Color(0xFF636E72),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F3F4),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.chat_bubble_outline,
-                                    color: Color(0xFF636E72),
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Reply',
-                                    style: TextStyle(
-                                      color: Color(0xFF636E72),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F3F4),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Icon(
-                                Icons.share_outlined,
-                                color: Color(0xFF636E72),
-                                size: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               );
             },
-            childCount: _posts.length,
           ),
         ),
+
         const SliverToBoxAdapter(
-          child: SizedBox(height: 100), // Space for FAB
+          child: SizedBox(height: 100),
         ),
       ],
     );
@@ -519,16 +557,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.2),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
           ),
           child: Column(
             children: [
-              Text(
-                emoji,
-                style: const TextStyle(fontSize: 24),
-              ),
+              Text(emoji, style: const TextStyle(fontSize: 24)),
               const SizedBox(height: 4),
               Text(
                 label,
@@ -543,5 +576,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  static String _formatTimestamp(dynamic timestamp) {
+    if (timestamp == null) return '';
+    DateTime postTime;
+
+    if (timestamp is Timestamp) {
+      postTime = timestamp.toDate();
+    } else if (timestamp is DateTime) {
+      postTime = timestamp;
+    } else {
+      return '';
+    }
+
+    final now = DateTime.now();
+    final difference = now.difference(postTime);
+
+    if (difference.inSeconds < 60) {
+      return '${difference.inSeconds}s ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
   }
 }
