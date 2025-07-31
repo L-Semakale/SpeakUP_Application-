@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import  '../services/auth_service.dart';
+import '../services/auth_service.dart'; // fixed extra space
 import 'dart:math';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,7 +21,6 @@ class _LoginScreenState extends State<LoginScreen>
   bool _isLoading = false;
   bool _rememberMe = false;
   bool _isSignUpMode = false;
-
 
   late AnimationController _animationController;
   late AnimationController _floatingController;
@@ -53,7 +51,10 @@ class _LoginScreenState extends State<LoginScreen>
 
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuart),
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutQuart,
+          ),
         );
 
     _floatingAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -76,7 +77,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   // Validation methods
   bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(email);
   }
 
   String? _validateEmail(String? value) {
@@ -115,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen>
     return null;
   }
 
-Future<void> _handleAuth() async {
+  Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -127,15 +130,15 @@ Future<void> _handleAuth() async {
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-        // we’ll finish profile in /setup
-        Navigator.pushReplacementNamed(context, '/setup');
+        // Navigate to setup screen
+        if (mounted) Navigator.pushReplacementNamed(context, '/setup');
       } else {
         // SIGN-IN
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-        Navigator.pushReplacementNamed(context, '/home');
+        if (mounted) Navigator.pushReplacementNamed(context, '/home');
       }
     } on FirebaseAuthException catch (e) {
       final msg = e.code == 'email-already-in-use'
@@ -158,6 +161,46 @@ Future<void> _handleAuth() async {
       _isSignUpMode = !_isSignUpMode;
       _formKey.currentState?.reset();
     });
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final emailController = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => _buildForgotPasswordDialog(emailController),
+    );
+
+    if (result == true) {
+      final email = emailController.text.trim();
+      if (!_isValidEmail(email)) {
+        _showError('Please enter a valid email address.');
+        return;
+      }
+      try {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+        _showSuccessSnackBar('Password reset email sent!');
+      } on FirebaseAuthException catch (e) {
+        _showError(e.message ?? 'Failed to send reset email.');
+      }
+    }
+  }
+
+  Future<void> _handleAnonymousAuth() async {
+    setState(() => _isLoading = true);
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+      if (mounted) Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      _showError(e.message ?? 'Anonymous sign-in failed.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSuccessSnackBar(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), backgroundColor: const Color(0xFF48BB78)),
+    );
   }
 
   Widget _buildForgotPasswordDialog(TextEditingController emailController) {
@@ -193,7 +236,10 @@ Future<void> _handleAuth() async {
             controller: emailController,
             decoration: InputDecoration(
               hintText: 'Enter your email',
-              prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF667EEA)),
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: Color(0xFF667EEA),
+              ),
               filled: true,
               fillColor: const Color(0xFFF8F9FA),
               border: OutlineInputBorder(
@@ -202,7 +248,10 @@ Future<void> _handleAuth() async {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+                borderSide: const BorderSide(
+                  color: Color(0xFF667EEA),
+                  width: 2,
+                ),
               ),
             ),
           ),
@@ -211,15 +260,23 @@ Future<void> _handleAuth() async {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text("Cancel", style: TextStyle(color: Color(0xFF636E72))),
+          child: const Text(
+            "Cancel",
+            style: TextStyle(color: Color(0xFF636E72)),
+          ),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, true),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF667EEA),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          child: const Text("Send Reset Link", style: TextStyle(color: Colors.white)),
+          child: const Text(
+            "Send Reset Link",
+            style: TextStyle(color: Colors.white),
+          ),
         ),
       ],
     );
@@ -350,7 +407,6 @@ Future<void> _handleAuth() async {
           ),
         ),
         const SizedBox(height: 24),
-
         Text(
           _isSignUpMode ? "Join Our Community" : "Welcome Back!",
           style: const TextStyle(
@@ -361,7 +417,6 @@ Future<void> _handleAuth() async {
           ),
         ),
         const SizedBox(height: 8),
-
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           decoration: BoxDecoration(
@@ -434,7 +489,7 @@ Future<void> _handleAuth() async {
             validator: _validatePassword,
           ),
 
-          // Remember Me & Forgot Password
+          // Remember Me & Forgot Password (Sign In Only)
           if (!_isSignUpMode) ...[
             const SizedBox(height: 20),
             Row(
@@ -446,7 +501,9 @@ Future<void> _handleAuth() async {
                     onChanged: (value) =>
                         setState(() => _rememberMe = value ?? false),
                     activeColor: const Color(0xFF667EEA),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
                 const Text(
@@ -493,14 +550,14 @@ Future<void> _handleAuth() async {
         prefixIcon: Icon(icon, color: const Color(0xFF667EEA), size: 22),
         suffixIcon: isPassword
             ? IconButton(
-          icon: Icon(
-            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-            color: const Color(0xFF94A3B8),
-            size: 22,
-          ),
-          onPressed: () =>
-              setState(() => _isPasswordVisible = !_isPasswordVisible),
-        )
+                icon: Icon(
+                  _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  color: const Color(0xFF94A3B8),
+                  size: 22,
+                ),
+                onPressed: () =>
+                    setState(() => _isPasswordVisible = !_isPasswordVisible),
+              )
             : null,
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
@@ -520,7 +577,10 @@ Future<void> _handleAuth() async {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
       ),
     );
   }
@@ -543,7 +603,7 @@ Future<void> _handleAuth() async {
         ],
       ),
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleEmailAuth,
+        onPressed: _isLoading ? null : _handleAuth,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -553,32 +613,32 @@ Future<void> _handleAuth() async {
         ),
         child: _isLoading
             ? const SizedBox(
-          height: 24,
-          width: 24,
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            strokeWidth: 2,
-          ),
-        )
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2,
+                ),
+              )
             : Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _isSignUpMode ? "Create Account" : "Sign In",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _isSignUpMode ? "Create Account" : "Sign In",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.arrow_forward,
-              color: Colors.white,
-              size: 20,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -603,14 +663,10 @@ Future<void> _handleAuth() async {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.visibility_off,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            const Text(
+          children: const [
+            Icon(Icons.visibility_off, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text(
               "Continue Anonymously",
               style: TextStyle(
                 fontSize: 16,
@@ -630,10 +686,7 @@ Future<void> _handleAuth() async {
         Row(
           children: [
             Expanded(
-              child: Container(
-                height: 1,
-                color: Colors.white.withOpacity(0.3),
-              ),
+              child: Container(height: 1, color: Colors.white.withOpacity(0.3)),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -647,10 +700,7 @@ Future<void> _handleAuth() async {
               ),
             ),
             Expanded(
-              child: Container(
-                height: 1,
-                color: Colors.white.withOpacity(0.3),
-              ),
+              child: Container(height: 1, color: Colors.white.withOpacity(0.3)),
             ),
           ],
         ),
@@ -701,12 +751,17 @@ Future<void> _handleAuth() async {
         icon: Icon(icon, size: 20, color: Colors.white),
         label: Text(
           label,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.transparent,
           side: BorderSide.none,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -724,7 +779,9 @@ Future<void> _handleAuth() async {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _isSignUpMode ? "Already have an account?" : "Don't have an account?",
+            _isSignUpMode
+                ? "Already have an account?"
+                : "Don't have an account?",
             style: const TextStyle(color: Colors.white70),
           ),
           TextButton(

@@ -7,26 +7,16 @@ class AuthResult {
   final User? user;
   final String? errorMessage;
 
-  AuthResult._({
-    required this.isSuccess,
-    this.user,
-    this.errorMessage,
-  });
+  AuthResult._({required this.isSuccess, this.user, this.errorMessage});
 
   /// Creates a successful result
-  factory AuthResult.success(User user) {
-    return AuthResult._(
-      isSuccess: true,
-      user: user,
-    );
+  factory AuthResult.success(User? user) {
+    return AuthResult._(isSuccess: true, user: user);
   }
 
   /// Creates a failure result
   factory AuthResult.failure(String errorMessage) {
-    return AuthResult._(
-      isSuccess: false,
-      errorMessage: errorMessage,
-    );
+    return AuthResult._(isSuccess: false, errorMessage: errorMessage);
   }
 }
 
@@ -48,10 +38,11 @@ class AuthService {
   }) async {
     try {
       // Create user account
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
+      final UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(
+            email: email.trim(),
+            password: password,
+          );
 
       // Update display name if provided
       if (displayName != null && displayName.isNotEmpty) {
@@ -60,11 +51,11 @@ class AuthService {
       }
 
       // Send email verification
-      if (!userCredential.user!.emailVerified) {
+      if (userCredential.user != null && !userCredential.user!.emailVerified) {
         await userCredential.user!.sendEmailVerification();
       }
 
-      return AuthResult.success(userCredential.user!);
+      return AuthResult.success(userCredential.user);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_getFirebaseErrorMessage(e));
     } catch (e) {
@@ -79,12 +70,10 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
+      final UserCredential userCredential = await _auth
+          .signInWithEmailAndPassword(email: email.trim(), password: password);
 
-      return AuthResult.success(userCredential.user!);
+      return AuthResult.success(userCredential.user);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_getFirebaseErrorMessage(e));
     } catch (e) {
@@ -97,7 +86,7 @@ class AuthService {
   static Future<AuthResult> signInAnonymously() async {
     try {
       final UserCredential userCredential = await _auth.signInAnonymously();
-      return AuthResult.success(userCredential.user!);
+      return AuthResult.success(userCredential.user);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_getFirebaseErrorMessage(e));
     } catch (e) {
@@ -110,7 +99,8 @@ class AuthService {
   static Future<AuthResult> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
-      return AuthResult.success(_auth.currentUser!);
+      // Password reset email sent successfully, user may not be signed in so return success without user
+      return AuthResult.success(null);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_getFirebaseErrorMessage(e));
     } catch (e) {
@@ -123,7 +113,8 @@ class AuthService {
   static Future<AuthResult> signOut() async {
     try {
       await _auth.signOut();
-      return AuthResult.success(_auth.currentUser!);
+      // After sign out, currentUser is null
+      return AuthResult.success(null);
     } catch (e) {
       debugPrint('Sign out error: $e');
       return AuthResult.failure('Failed to sign out');
@@ -168,7 +159,7 @@ class AuthService {
       }
 
       await user.reload();
-      return AuthResult.success(_auth.currentUser!);
+      return AuthResult.success(_auth.currentUser);
     } catch (e) {
       debugPrint('Update profile error: $e');
       return AuthResult.failure('Failed to update profile');
@@ -185,7 +176,7 @@ class AuthService {
 
       await user.updateEmail(newEmail.trim());
       await user.reload();
-      return AuthResult.success(_auth.currentUser!);
+      return AuthResult.success(_auth.currentUser);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_getFirebaseErrorMessage(e));
     } catch (e) {
@@ -343,7 +334,7 @@ class AuthService {
 
     if (user.isAnonymous) return 'Anonymous User';
 
-    return user.displayName?.isNotEmpty == true
+    return (user.displayName?.isNotEmpty == true)
         ? user.displayName!
         : user.email?.split('@')[0] ?? 'User';
   }

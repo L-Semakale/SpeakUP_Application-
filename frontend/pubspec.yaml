@@ -10,26 +10,19 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^3.6.0
-  firebase_auth: ^5.3.1
-  cloud_firestore: ^5.4.3
-  shared_preferences: ^2.2.3
-  file_picker: ^8.1.4
-  cupertino_icons: ^1.0.8
-<<<<<<< HEAD
   firebase_core: ^4.0.0
   firebase_auth: ^6.0.0
   cloud_firestore: ^6.0.0
+  shared_preferences: ^2.2.3
+  file_picker: ^8.1.4
+  cupertino_icons: ^1.0.8
   firebase_storage: ^13.0.0
-=======
-  image_picker: ^1.1.2
-  url_launcher: ^6.3.2
->>>>>>> 5586fd0bd2e7b4340058841d05c24491fadab80b
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-<<<<<<< HEAD
+  provider: ^6.0.0
   file_picker: ^8.1.4
 
 
@@ -38,8 +31,6 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-=======
->>>>>>> 5586fd0bd2e7b4340058841d05c24491fadab80b
   flutter_lints: ^5.0.0
 
 flutter:
