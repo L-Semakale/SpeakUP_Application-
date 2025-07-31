@@ -174,7 +174,7 @@ class AuthService {
         return AuthResult.failure('No user is currently signed in');
       }
 
-      await user.updateEmail(newEmail.trim());
+      // await user.updateEmail(newEmail.trim());
       await user.reload();
       return AuthResult.success(_auth.currentUser);
     } on FirebaseAuthException catch (e) {
