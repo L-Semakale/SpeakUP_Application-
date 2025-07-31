@@ -1,23 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'create_post.dart';
 import 'resources_screen.dart';
 import 'app_setting.dart';
 import 'your_support.dart';
 
-class HomeScreen extends StatefulWidget {
+/// Riverpod StreamProvider for community posts
+final postsStreamProvider =
+    StreamProvider.autoDispose<List<QueryDocumentSnapshot>>((ref) {
+      return FirebaseFirestore.instance
+          .collection('posts')
+          .orderBy('timestamp', descending: true)
+          .snapshots()
+          .map((snapshot) => snapshot.docs);
+    });
+
+class HomeScreen extends ConsumerStatefulWidget {
   final String userName;
   const HomeScreen({super.key, required this.userName});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with TickerProviderStateMixin {
   int _currentIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
+  /// Track liked posts locally to instantly show UI changes
+  final Map<String, bool> _likedPosts = {};
 
   @override
   void initState() {
@@ -40,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final postsAsync = ref.watch(postsStreamProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -99,7 +116,350 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
-      body: FadeTransition(opacity: _fadeAnimation, child: _buildHomeTab()),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF667EEA).withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hello, ${widget.userName}! 👋',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'How are you feeling today?',
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildMoodButton('😊', 'Great'),
+                        const SizedBox(width: 12),
+                        _buildMoodButton('😌', 'Okay'),
+                        const SizedBox(width: 12),
+                        _buildMoodButton('😔', 'Not good'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Community Posts',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D3436),
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () {
+                        // TODO: Implement filtering if needed
+                      },
+                      icon: const Icon(Icons.filter_alt_outlined, size: 18),
+                      label: const Text('Filter'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF636E72),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Posts list using Riverpod AsyncValue with SliverList
+            postsAsync.when(
+              data: (posts) {
+                if (posts.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(child: Text('No posts yet.')),
+                    ),
+                  );
+                }
+
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final postDoc = posts[index];
+                    final post = postDoc.data()! as Map<String, dynamic>;
+
+                    bool isLiked = _likedPosts[postDoc.id] ?? false;
+                    int likesCount = post['likes'] ?? 0;
+
+                    return TweenAnimationBuilder<double>(
+                      duration: Duration(milliseconds: 300 + (index * 100)),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 30 * (1 - value)),
+                          child: Opacity(opacity: value, child: child),
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          const Color(
+                                            0xFF667EEA,
+                                          ).withOpacity(0.2),
+                                          const Color(
+                                            0xFF764BA2,
+                                          ).withOpacity(0.2),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        post['avatar'] ?? '👤',
+                                        style: const TextStyle(fontSize: 20),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          post['userName'] ?? 'Anonymous',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Color(0xFF2D3436),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _formatTimestamp(post['timestamp']),
+                                          style: const TextStyle(
+                                            color: Color(0xFF636E72),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuButton(
+                                    icon: const Icon(
+                                      Icons.more_horiz,
+                                      color: Color(0xFF636E72),
+                                    ),
+                                    itemBuilder: (context) => const [
+                                      PopupMenuItem(child: Text('Report')),
+                                      PopupMenuItem(child: Text('Hide')),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                post['content'] ?? '',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  height: 1.5,
+                                  color: Color(0xFF2D3436),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final newLiked = !isLiked;
+                                      setState(() {
+                                        _likedPosts[postDoc.id] = newLiked;
+                                      });
+
+                                      final postRef = FirebaseFirestore.instance
+                                          .collection('posts')
+                                          .doc(postDoc.id);
+
+                                      await FirebaseFirestore.instance
+                                          .runTransaction((transaction) async {
+                                            final freshSnapshot =
+                                                await transaction.get(postRef);
+                                            final currentLikes =
+                                                freshSnapshot.get('likes') ?? 0;
+                                            final updatedLikes = newLiked
+                                                ? currentLikes + 1
+                                                : currentLikes - 1;
+
+                                            transaction.update(postRef, {
+                                              'likes': updatedLikes,
+                                            });
+                                          });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isLiked
+                                            ? const Color(
+                                                0xFF667EEA,
+                                              ).withOpacity(0.1)
+                                            : const Color(0xFFF1F3F4),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isLiked
+                                                ? Icons.favorite
+                                                : Icons.favorite_border,
+                                            color: isLiked
+                                                ? const Color(0xFF667EEA)
+                                                : const Color(0xFF636E72),
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '$likesCount',
+                                            style: TextStyle(
+                                              color: isLiked
+                                                  ? const Color(0xFF667EEA)
+                                                  : const Color(0xFF636E72),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F3F4),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.chat_bubble_outline,
+                                          color: Color(0xFF636E72),
+                                          size: 18,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Reply',
+                                          style: TextStyle(
+                                            color: Color(0xFF636E72),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F3F4),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Icon(
+                                      Icons.share_outlined,
+                                      color: Color(0xFF636E72),
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }, childCount: posts.length),
+                );
+              },
+              loading: () => const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+              error: (error, stack) => SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Center(child: Text('Error loading posts: $error')),
+                ),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(
           context,
@@ -177,366 +537,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildHomeTab() {
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(
-          child: Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF667EEA).withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hello, ${widget.userName}! 👋',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'How are you feeling today?',
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildMoodButton('😊', 'Great'),
-                    const SizedBox(width: 12),
-                    _buildMoodButton('😌', 'Okay'),
-                    const SizedBox(width: 12),
-                    _buildMoodButton('😔', 'Not good'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                const Text(
-                  'Community Posts',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D3436),
-                  ),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () {
-                    // TODO: Implement filtering if needed
-                  },
-                  icon: const Icon(Icons.filter_alt_outlined, size: 18),
-                  label: const Text('Filter'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF636E72),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        SliverToBoxAdapter(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('posts')
-                .orderBy('timestamp', descending: true)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(child: Text('No posts yet.')),
-                );
-              }
-              final posts = snapshot.data!.docs;
-
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: posts.length,
-                itemBuilder: (context, index) {
-                  final post = posts[index].data()! as Map<String, dynamic>;
-
-                  bool isLiked = false;
-                  int likes = post['likes'] ?? 0;
-
-                  return TweenAnimationBuilder<double>(
-                    duration: Duration(milliseconds: 300 + (index * 100)),
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    builder: (context, value, child) {
-                      return Transform.translate(
-                        offset: Offset(0, 30 * (1 - value)),
-                        child: Opacity(opacity: value, child: child),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        const Color(
-                                          0xFF667EEA,
-                                        ).withOpacity(0.2),
-                                        const Color(
-                                          0xFF764BA2,
-                                        ).withOpacity(0.2),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      post['avatar'] ?? '👤',
-                                      style: const TextStyle(fontSize: 20),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        post['userName'] ?? 'Anonymous',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: Color(0xFF2D3436),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _formatTimestamp(post['timestamp']),
-                                        style: const TextStyle(
-                                          color: Color(0xFF636E72),
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                PopupMenuButton(
-                                  icon: const Icon(
-                                    Icons.more_horiz,
-                                    color: Color(0xFF636E72),
-                                  ),
-                                  itemBuilder: (context) => const [
-                                    PopupMenuItem(child: Text('Report')),
-                                    PopupMenuItem(child: Text('Hide')),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              post['content'] ?? '',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                height: 1.5,
-                                color: Color(0xFF2D3436),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                StatefulBuilder(
-                                  builder: (context, setInnerState) {
-                                    return GestureDetector(
-                                      onTap: () async {
-                                        setInnerState(() {
-                                          isLiked = !isLiked;
-                                          likes = isLiked
-                                              ? likes + 1
-                                              : likes - 1;
-                                        });
-
-                                        final postId = posts[index].id;
-                                        final postRef = FirebaseFirestore
-                                            .instance
-                                            .collection('posts')
-                                            .doc(postId);
-
-                                        await FirebaseFirestore.instance
-                                            .runTransaction((
-                                              transaction,
-                                            ) async {
-                                              final freshSnapshot =
-                                                  await transaction.get(
-                                                    postRef,
-                                                  );
-                                              final currentLikes =
-                                                  freshSnapshot.get('likes') ??
-                                                  0;
-                                              final newLikes = isLiked
-                                                  ? currentLikes + 1
-                                                  : currentLikes - 1;
-                                              transaction.update(postRef, {
-                                                'likes': newLikes,
-                                              });
-                                            });
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isLiked
-                                              ? const Color(
-                                                  0xFF667EEA,
-                                                ).withOpacity(0.1)
-                                              : const Color(0xFFF1F3F4),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              isLiked
-                                                  ? Icons.favorite
-                                                  : Icons.favorite_border,
-                                              color: isLiked
-                                                  ? const Color(0xFF667EEA)
-                                                  : const Color(0xFF636E72),
-                                              size: 18,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '$likes',
-                                              style: TextStyle(
-                                                color: isLiked
-                                                    ? const Color(0xFF667EEA)
-                                                    : const Color(0xFF636E72),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F3F4),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.chat_bubble_outline,
-                                        color: Color(0xFF636E72),
-                                        size: 18,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Reply',
-                                        style: TextStyle(
-                                          color: Color(0xFF636E72),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F3F4),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Icon(
-                                    Icons.share_outlined,
-                                    color: Color(0xFF636E72),
-                                    size: 18,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-
-        const SliverToBoxAdapter(
-          child: SizedBox(height: 100),
-        ),
-      ],
-    );
-  }
-
   Widget _buildMoodButton(String emoji, String label) {
     return Expanded(
       child: GestureDetector(
@@ -580,7 +580,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   static String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return '';
-    DateTime postTime;
+    late DateTime postTime;
 
     if (timestamp is Timestamp) {
       postTime = timestamp.toDate();
